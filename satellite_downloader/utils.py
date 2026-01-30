@@ -260,7 +260,7 @@ def print_summary(info: dict):
         center_lon, center_lat = get_center_point(min_lon, min_lat, max_lon, max_lat)
         print(f"Center: [{center_lon:.4f}, {center_lat:.4f}]")
 
-    if 'resolution' in info:
+    if 'resolution' in info and info['resolution'] is not None:
         print(f"Resolution: {info['resolution']:.6f} degrees")
 
     if 'zoom' in info:
