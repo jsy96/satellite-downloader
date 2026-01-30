@@ -1,6 +1,6 @@
 name: satellite-download
 display_name: Satellite Downloader
-description: Download satellite imagery (Google, Sentinel-2) for a specified area and export as GeoTIFF
+description: Download satellite imagery and maps from multiple free sources (Sentinel-2, Landsat, MODIS, Esri, OSM) for a specified area and export as GeoTIFF
 version: 1.1.0
 author: jsy96
 repository: https://github.com/jsy96/satellite-downloader
@@ -27,8 +27,8 @@ parameters:
 
   - name: zoom
     type: integer
-    description: Explicit zoom level (overrides resolution). Google: 0-20, Sentinel-2: 0-14
-    example: 14
+    description: Explicit zoom level (overrides resolution). Varies by source: S2(0-13), Landsat(0-12), MODIS(0-9), Esri(0-17), OSM(0-19)
+    example: 13
     required: false
 
   - name: output
@@ -39,7 +39,7 @@ parameters:
 
   - name: source
     type: string
-    description: Data source: google (default), sentinel2, sentinel-2, or s2
+    description: Data source: sentinel2/s2, landsat/l8, modis, esri, osm
     example: "sentinel2"
     required: false
 
@@ -75,20 +75,20 @@ parameters:
 
 # Examples for users
 examples:
-  - description: Download small area with Google
+  - description: Download small area with Sentinel-2
     command: satellite-download --bbox 110,30,110.1,30.1 --resolution 0.0001 --output area.tif
 
-  - description: Download with Sentinel-2
-    command: satellite-download --bbox 110,30,110.1,30.1 --source sentinel2 --zoom 14 --output area.tif
+  - description: Download with Landsat (30m resolution)
+    command: satellite-download --bbox 110,30,110.1,30.1 --source landsat --zoom 12 --output area.tif
 
-  - description: Download with Sentinel-2 and low cloud cover
-    command: satellite-download --bbox 110,30,110.1,30.1 --source s2 --cloud-cover 10 --zoom 14 --output area.tif
+  - description: Download large area with MODIS
+    command: satellite-download --bbox 110,30,111,31 --source modis --zoom 9 --output large.tif
 
-  - description: Download with explicit zoom level
-    command: satellite-download --bbox 110,30,110.1,30.1 --zoom 18 --output area.tif
+  - description: Download with Esri World Imagery (high resolution)
+    command: satellite-download --bbox 110,30,110.1,30.1 --source esri --zoom 17 --output detailed.tif
 
-  - description: Download large area with BigTIFF
-    command: satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff
+  - description: Download with OpenStreetMap (map tiles)
+    command: satellite-download --bbox 110,30,110.1,30.1 --source osm --zoom 16 --output map.tif
 
 # CLI command to execute
 command: satellite-download

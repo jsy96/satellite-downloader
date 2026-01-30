@@ -196,7 +196,7 @@ class GeoTIFFWriter:
 
             # Add metadata
             dst.update_tags(
-                source='Google Satellite Imagery',
+                source='Satellite Imagery/Map Tiles',
                 software='satellite-downloader',
                 zoom=tile_info['zoom'],
                 tile_count=len(tiles)
@@ -300,7 +300,7 @@ class GeoTIFFWriter:
 
             # Add metadata
             dst.update_tags(
-                source='Google Satellite Imagery',
+                source='Satellite Imagery/Map Tiles',
                 software='satellite-downloader',
                 zoom=tile_info['zoom'],
                 tile_count=tile_count

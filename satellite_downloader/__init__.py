@@ -1,8 +1,9 @@
 """
 Satellite Downloader - Download satellite imagery as GeoTIFF.
 
-A Python tool for downloading satellite imagery from multiple sources
-(Google, Sentinel-2, etc.) and exporting it as georeferenced GeoTIFF files.
+A Python tool for downloading satellite imagery and maps from multiple
+free sources (Sentinel-2, Landsat, MODIS, Esri, OSM) and exporting
+it as georeferenced GeoTIFF files.
 """
 
 __version__ = "1.1.0"
@@ -10,7 +11,15 @@ __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
 from .cache import CacheManager
-from .datasources import DataSource, DataSourceFactory, GoogleDataSource, Sentinel2DataSource
+from .datasources import (
+    DataSource,
+    DataSourceFactory,
+    Sentinel2DataSource,
+    LandsatDataSource,
+    MODISDataSource,
+    EsriDataSource,
+    OSMDataSource
+)
 from .downloader import TileDownloader
 from .geotiff import GeoTIFFWriter, create_geotiff
 from .tiles import (
@@ -47,8 +56,11 @@ __all__ = [
     # Data sources
     'DataSource',
     'DataSourceFactory',
-    'GoogleDataSource',
     'Sentinel2DataSource',
+    'LandsatDataSource',
+    'MODISDataSource',
+    'EsriDataSource',
+    'OSMDataSource',
 
     # Main functions
     'create_geotiff',

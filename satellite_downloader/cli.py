@@ -1,8 +1,8 @@
 """
 Command line interface for satellite downloader.
 
-Provides CLI for downloading satellite imagery from various sources
-(Google, Sentinel-2, etc.) and exporting as GeoTIFF.
+Provides CLI for downloading satellite imagery and maps from multiple
+free sources (Sentinel-2, Landsat, MODIS, Esri, OSM) and exporting as GeoTIFF.
 """
 
 import sys
@@ -38,10 +38,10 @@ from .utils import (
               help='Compression method (default: lzw)')
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--clear-cache', is_flag=True, help='Clear cache before downloading')
-@click.option('--source', type=str, default='google',
-              help='Data source: google, sentinel2/sentinel-2/s2 (default: google)')
+@click.option('--source', type=str, default='sentinel2',
+              help='Data source: sentinel2/s2, landsat/l8, modis, esri, osm (default: sentinel2)')
 @click.option('--cloud-cover', type=float, default=20.0,
-              help='Maximum cloud cover percentage for Sentinel-2 (default: 20)')
+              help='Maximum cloud cover percentage for S2/Landsat/MODIS (default: 20)')
 @click.version_option(version='1.0.2')
 def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float],
          zoom: Optional[int], output: str, bigtiff: bool, cache: str,
@@ -52,17 +52,17 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
 
     \b
     Examples:
-        # Using bbox with Google
+        # Using bbox with Sentinel-2
         satellite-download --bbox 110,30,110.1,30.1 --resolution 0.0001 --output area.tif
 
-        # Using Sentinel-2 data
-        satellite-download --bbox 110,30,110.1,30.1 --source sentinel2 --zoom 14 --output area.tif
+        # Using Landsat data
+        satellite-download --bbox 110,30,110.1,30.1 --source landsat --zoom 12 --output area.tif
 
-        # Using extent string
-        satellite-download --extent "E110-E110.1,N30-N30.1" --resolution 0.0001 --output area.tif
+        # Using MODIS (good for large areas)
+        satellite-download --bbox 110,30,111,31 --source modis --zoom 9 --output large.tif
 
-        # With explicit zoom level
-        satellite-download --bbox 110,30,110.1,30.1 --zoom 18 --output area.tif
+        # Using Esri World Imagery (high resolution)
+        satellite-download --bbox 110,30,110.1,30.1 --source esri --zoom 17 --output detailed.tif
 
         # Large area with BigTIFF
         satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff

@@ -14,7 +14,7 @@ import requests
 from PIL import Image
 
 from .cache import CacheManager
-from .datasources import DataSource, GoogleDataSource, DataSourceFactory
+from .datasources import DataSource, Sentinel2DataSource, DataSourceFactory
 from .tiles import get_tiles_in_bbox
 
 
@@ -23,7 +23,7 @@ class TileDownloader:
     Downloads satellite imagery tiles from various data sources.
 
     Features:
-    - Multiple data source support (Google, Sentinel-2, etc.)
+    - Multiple data source support (Sentinel-2, Landsat, MODIS, Esri, OSM)
     - Concurrent downloads with thread pool
     - Automatic retry on failure
     - Caching support for resume capability
@@ -45,13 +45,13 @@ class TileDownloader:
             max_workers: Maximum number of concurrent download threads
             retry_count: Number of retries for failed downloads
             request_delay: Delay between requests in seconds
-            data_source: Data source to use (defaults to Google)
+            data_source: Data source to use (defaults to Sentinel-2)
         """
         self.cache = cache_manager or CacheManager()
         self.max_workers = max_workers
         self.retry_count = retry_count
         self.request_delay = request_delay
-        self.data_source = data_source or GoogleDataSource()
+        self.data_source = data_source or Sentinel2DataSource()
 
         # Configure session
         self.session = requests.Session()

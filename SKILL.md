@@ -1,67 +1,78 @@
 ---
 name: satellite-download
-description: Download Google satellite imagery for any area and export as GeoTIFF format
+description: Download satellite imagery and maps from multiple free sources for any area and export as GeoTIFF format
 model: sonnet
 ---
 
 # Satellite Downloader
 
-You are a satellite imagery download assistant. Use the `satellite-download` CLI tool to download Google satellite imagery and export as GeoTIFF files.
+You are a satellite imagery download assistant. Use the `satellite-download` CLI tool to download satellite imagery and maps from multiple free sources and export as GeoTIFF files.
 
 ## When to Use
 
 Invoke this skill when users want to:
 - Download satellite imagery for a specific location
-- Create GeoTIFF files from Google Satellite imagery
+- Create GeoTIFF files from satellite imagery or maps
 - Get aerial/satellite photos for GIS work or mapping
 
-Trigger phrases:
-- "Download satellite imagery for [location]"
-- "I need a satellite image of [area]"
-- "Get satellite data for coordinates [bbox]"
+Data sources available:
+- **Sentinel-2**: High resolution (10m), ESA via NASA GIBS (zoom 0-13)
+- **Landsat 8/9**: Medium resolution (30m), NASA/USGS via NASA GIBS (zoom 0-12)
+- **MODIS**: Low resolution (250m), daily imagery, NASA via NASA GIBS (zoom 0-9)
+- **Esri World Imagery**: High resolution mosaic, multi-source (zoom 0-17)
+- **OpenStreetMap**: Rendered map tiles (not imagery) (zoom 0-19)
 
 ## How to Respond
 
 1. **Extract parameters** from the user's request:
    - **bbox**: Bounding box as "min_lon,min_lat,max_lon,max_lat"
    - **extent**: Alternative format "E{min}-E{max},N{min}-N{max}"
-   - **zoom**: Zoom level (1-22), higher = more detail
+   - **source**: Data source (sentinel2, landsat, modis, esri, osm)
+   - **zoom**: Zoom level (varies by source)
    - **resolution**: Resolution in degrees (e.g., 0.0001)
    - **output**: Output file path (default: "area.tif")
 
-2. **Choose appropriate zoom level** based on area size:
-   - Small area (< 1km²): zoom 18-20
-   - Medium area (< 100km²): zoom 14-17
-   - Large area (> 100km²): zoom 10-13
+2. **Choose appropriate data source and zoom level**:
+   - **High detail (< 10km²)**: Sentinel-2 (zoom 12-13), Esri (zoom 15-17)
+   - **Medium detail (< 100km²)**: Landsat (zoom 11-12), Sentinel-2 (zoom 10-11)
+   - **Large areas (> 100km²)**: MODIS (zoom 7-9), Landsat (zoom 9-10)
+   - **Map tiles (not imagery)**: OSM (zoom 14-18)
 
 3. **Build and execute the command**:
    ```bash
-   satellite-download --bbox <min_lon>,<min_lat>,<max_lon>,<max_lat> --zoom <level> --output <file>.tif
+   satellite-download --bbox <min_lon>,<min_lat>,<max_lon>,<max_lat> --source <source> --zoom <level> --output <file>.tif
    ```
 
 4. **Inform the user** about:
    - The command being executed
+   - Data source and resolution
    - Estimated tile count (warn if > 1000)
    - Expected file size
 
 ## Examples
 
 ### User: "Download satellite imagery for Beijing from 116.3,39.8 to 116.5,40.0"
-**Response**: "Downloading satellite imagery for Beijing area (116.3°E-116.5°E, 39.8°N-40.0°N) at zoom 16..."
+**Response**: "Downloading Sentinel-2 imagery for Beijing area (116.3°E-116.5°E, 39.8°N-40.0°N) at zoom 13..."
 ```bash
-satellite-download --bbox 116.3,39.8,116.5,40.0 --zoom 16 --output beijing.tif
+satellite-download --bbox 116.3,39.8,116.5,40.0 --source sentinel2 --zoom 13 --output beijing.tif
 ```
 
 ### User: "I need a high-resolution satellite image of Shanghai Pudong"
-**Response**: "I'll download high-resolution satellite imagery for Shanghai Pudong area..."
+**Response**: "I'll download high-resolution Esri World Imagery for Shanghai Pudong area..."
 ```bash
-satellite-download --bbox 121.5,31.2,121.6,31.3 --zoom 18 --output pudong.tif
+satellite-download --bbox 121.5,31.2,121.6,31.3 --source esri --zoom 17 --output pudong.tif
 ```
 
 ### User: "Get satellite data for coordinates 110,30 to 110.1,30.1"
-**Response**: "Downloading satellite data for the specified area..."
+**Response**: "Downloading Landsat imagery for the specified area..."
 ```bash
-satellite-download --bbox 110,30,110.1,30.1 --zoom 17 --output area.tif
+satellite-download --bbox 110,30,110.1,30.1 --source landsat --zoom 12 --output area.tif
+```
+
+### User: "Download a large regional map of Japan"
+**Response**: "I'll use MODIS data for this large area coverage..."
+```bash
+satellite-download --bbox 129,30,146,46 --source modis --zoom 8 --output japan.tif
 ```
 
 ## Important Notes
@@ -75,9 +86,19 @@ satellite-download --bbox 110,30,110.1,30.1 --zoom 17 --output area.tif
 
 ## Technical Reference (For AI Context)
 
+### Data Sources Comparison
+
+| Source | Resolution | Zoom Range | Coverage | Update Frequency |
+|--------|-----------|------------|----------|------------------|
+| Sentinel-2 | ~10m | 0-13 | Global | 5 days |
+| Landsat 8/9 | ~30m | 0-12 | Global | 8-16 days |
+| MODIS | ~250m | 0-9 | Global | Daily |
+| Esri World Imagery | ~1m (varies) | 0-17 | Global | Variable |
+| OpenStreetMap | Vector rendering | 0-19 | Global | Daily |
+
 ### Web Mercator Tile System
 
-Google Maps uses the Web Mercator projection with XYZ tile coordinates:
+All data sources use the Web Mercator projection with XYZ tile coordinates:
 - **X axis**: Increases from west to east (0 to 2^zoom - 1)
 - **Y axis**: Increases from north to south (0 to 2^zoom - 1)
 - **Tile size**: 256x256 pixels
@@ -128,7 +149,9 @@ lat = atan(sinh(π * (1 - 2*y / n)))
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `--resolution` | Resolution in degrees | auto |
-| `--zoom` | Explicit zoom level (1-22) | auto |
+| `--zoom` | Explicit zoom level (varies by source) | auto |
+| `--source` | Data source (sentinel2/landsat/modis/esri/osm) | sentinel2 |
+| `--cloud-cover` | Max cloud cover % (S2/Landsat/MODIS) | 20-50 |
 | `--bigtiff` | Enable BigTIFF for large files | auto |
 | `--compression` | lzw, deflate, jpeg, none | lzw |
 | `--workers` | Concurrent downloads | 8 |
@@ -136,40 +159,43 @@ lat = atan(sinh(π * (1 - 2*y / n)))
 
 ## Zoom Level Guide
 
-| Zoom | Resolution | Area Coverage | Detail Level | Use Case |
-|------|-----------|---------------|--------------|----------|
-| 10 | ~100m/pixel | ~2000km × 2000km | City overview | Large regions |
-| 14 | ~10m/pixel | ~250km × 250km | Street level | Town districts |
-| 18 | ~1m/pixel | ~15km × 15km | Building detail | Neighborhoods |
-| 20 | ~0.3m/pixel | ~4km × 4km | Maximum | Small areas |
+| Zoom | Resolution | Area Coverage | Detail Level | Best Sources |
+|------|-----------|---------------|--------------|--------------|
+| 7 | ~600m/pixel | ~16000km × 16000km | Country overview | MODIS |
+| 10 | ~75m/pixel | ~2000km × 2000km | City overview | Landsat, MODIS |
+| 13 | ~10m/pixel | ~250km × 250km | Street level | Sentinel-2 |
+| 17 | ~1m/pixel | ~15km × 15km | Building detail | Esri, OSM |
 
-**Important**: Higher zoom = exponentially more tiles. Always test with small areas first.
+**Important**: Higher zoom = exponentially more tiles. Check source-specific zoom limits. Always test with small areas first.
 
 ## Common Tasks
 
 ### Download Small Area (Recommended for Testing)
 
 ```bash
-satellite-download --bbox 110,30,110.01,30.01 --resolution 0.0001 --output test.tif
+# Sentinel-2
+satellite-download --bbox 110,30,110.01,30.01 --source sentinel2 --zoom 13 --output test.tif
 ```
 
-### Download with Explicit Zoom
+### Download High-Resolution Imagery
 
 ```bash
-satellite-download --bbox 110,30,110.1,30.1 --zoom 18 --output detailed.tif
+# Esri World Imagery (highest resolution)
+satellite-download --bbox 110,30,110.1,30.1 --source esri --zoom 17 --output detailed.tif
 ```
 
-### Download Large Area
+### Download Large Regional Area
 
 ```bash
-satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff --workers 16
+# MODIS for large areas
+satellite-download --bbox 110,30,111,31 --source modis --zoom 9 --output large.tif --bigtiff --workers 16
 ```
 
-### Resume Interrupted Download
+### Download Map Tiles (Not Imagery)
 
 ```bash
-# Re-run the same command - cached tiles will be reused
-satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output area.tif
+# OpenStreetMap
+satellite-download --bbox 110,30,110.1,30.1 --source osm --zoom 16 --output map.tif
 ```
 
 ## Output Format
@@ -216,7 +242,7 @@ At zoom 18+, a 1° × 1° area = **millions of tiles**:
 
 ### 3. Rate Limiting
 
-Google may throttle excessive requests:
+NASA GIBS may throttle excessive requests:
 - Tool includes delays between requests
 - Don't increase workers too much (max ~16)
 - Cache helps avoid re-downloads
@@ -267,5 +293,15 @@ gdalinfo tokyo_bay.tif
 
 ## Source
 
-Based on Web Mercator tile standard used by Google Maps/Earth.
-Reference: https://en.wikipedia.org/wiki/Web_Mercator_projection
+Based on Web Mercator tile standard used by various imagery providers:
+
+**NASA GIBS (Global Imagery Browse Services)**
+- Sentinel-2: https://gibs.earthdata.nasa.gov/
+- Landsat 8/9: https://gibs.earthdata.nasa.gov/
+- MODIS Terra: https://gibs.earthdata.nasa.gov/
+
+**Other Sources**
+- Esri World Imagery: https://www.esri.com/
+- OpenStreetMap: https://www.openstreetmap.org/
+
+Web Mercator Reference: https://en.wikipedia.org/wiki/Web_Mercator_projection
