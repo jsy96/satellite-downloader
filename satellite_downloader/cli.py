@@ -42,11 +42,13 @@ from .utils import (
               help='Data source: sentinel2/s2, landsat/l8, modis, esri, osm (default: sentinel2)')
 @click.option('--cloud-cover', type=float, default=20.0,
               help='Maximum cloud cover percentage for S2/Landsat/MODIS (default: 20)')
+@click.option('-v', '--verbose', count=True,
+              help='Increase verbosity (can be used multiple times)')
 @click.version_option(version='1.0.2')
 def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float],
          zoom: Optional[int], output: str, bigtiff: bool, cache: str,
          workers: int, compression: str, no_cache: bool, clear_cache: bool,
-         source: str, cloud_cover: float):
+         source: str, cloud_cover: float, verbose: int = 0):
     """
     Download satellite imagery and export as GeoTIFF.
 
@@ -68,6 +70,11 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
         satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff
     """
     try:
+        # Validate cloud cover parameter
+        if not 0 <= cloud_cover <= 100:
+            click.echo(f"Error: --cloud-cover must be between 0 and 100, got {cloud_cover}", err=True)
+            sys.exit(1)
+
         # Create data source
         data_source = DataSourceFactory.get_source(
             source,
@@ -231,7 +238,7 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
 
     except Exception as e:
         click.echo(f"\nError: {e}", err=True)
-        if click.option('-v', '--verbose', count=True):
+        if verbose > 0:
             traceback.print_exc()
         sys.exit(1)
 

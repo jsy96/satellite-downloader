@@ -298,13 +298,9 @@ class EsriDataSource(DataSource):
 
     # Esri World Imagery tile server
     TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-    USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
     def __init__(self, **kwargs):
         super().__init__()
-        self.session.headers.update({
-            'User-Agent': self.USER_AGENT
-        })
 
     def get_name(self) -> str:
         return "esri"
@@ -339,13 +335,9 @@ class OSMDataSource(DataSource):
 
     # OpenStreetMap tile server
     TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-    USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
     def __init__(self, **kwargs):
         super().__init__()
-        self.session.headers.update({
-            'User-Agent': self.USER_AGENT
-        })
 
     def get_name(self) -> str:
         return "osm"

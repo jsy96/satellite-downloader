@@ -5,6 +5,7 @@ Downloads satellite imagery tiles from various data sources
 with support for concurrent downloads and caching.
 """
 
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
@@ -94,13 +95,13 @@ class TileDownloader:
                 # Verify we got an image
                 content_type = response.headers.get('Content-Type', '')
                 if 'image' not in content_type.lower():
-                    print(f"Warning: Unexpected content type for tile ({zoom}, {x}, {y}): {content_type}")
+                    print(f"Warning: Unexpected content type for tile ({zoom}, {x}, {y}): {content_type}", file=sys.stderr)
 
                 return response.content
 
             except requests.RequestException as e:
                 if attempt == self.retry_count - 1:
-                    print(f"Failed to download tile ({zoom}, {x}, {y}) after {self.retry_count} attempts: {e}")
+                    print(f"Failed to download tile ({zoom}, {x}, {y}) after {self.retry_count} attempts: {e}", file=sys.stderr)
                     return None
                 time.sleep(1 * (attempt + 1))  # Exponential backoff
 
@@ -127,7 +128,7 @@ class TileDownloader:
                 try:
                     return Image.open(BytesIO(cached_data))
                 except Exception as e:
-                    print(f"Warning: Could not load cached tile ({zoom}, {x}, {y}): {e}")
+                    print(f"Warning: Could not load cached tile ({zoom}, {x}, {y}): {e}", file=sys.stderr)
 
         # Download tile
         data = self._download_tile_data(x, y, zoom)
@@ -141,7 +142,7 @@ class TileDownloader:
                 self.cache.put_tile(zoom, x, y, data)
             return img
         except Exception as e:
-            print(f"Warning: Could not open tile image ({zoom}, {x}, {y}): {e}")
+            print(f"Warning: Could not open tile image ({zoom}, {x}, {y}): {e}", file=sys.stderr)
             return None
 
     def download_area(self, min_lon: float, min_lat: float,
@@ -200,7 +201,7 @@ class TileDownloader:
 
         # Report failures
         if failed:
-            print(f"Warning: {len(failed)} tiles failed to download")
+            print(f"Warning: {len(failed)} tiles failed to download", file=sys.stderr)
 
         return results
 
