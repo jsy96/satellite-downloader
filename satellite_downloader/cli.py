@@ -1,7 +1,8 @@
 """
 Command line interface for satellite downloader.
 
-Provides CLI for downloading Google satellite imagery and exporting as GeoTIFF.
+Provides CLI for downloading satellite imagery from various sources
+(Google, Sentinel-2, etc.) and exporting as GeoTIFF.
 """
 
 import sys
@@ -11,6 +12,7 @@ from typing import Optional
 import click
 
 from .cache import CacheManager
+from .datasources import DataSourceFactory
 from .downloader import TileDownloader
 from .geotiff import GeoTIFFWriter
 from .tiles import (
@@ -36,17 +38,25 @@ from .utils import (
               help='Compression method (default: lzw)')
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--clear-cache', is_flag=True, help='Clear cache before downloading')
-@click.version_option(version='1.0.0')
+@click.option('--source', type=str, default='google',
+              help='Data source: google, sentinel2/sentinel-2/s2 (default: google)')
+@click.option('--cloud-cover', type=float, default=20.0,
+              help='Maximum cloud cover percentage for Sentinel-2 (default: 20)')
+@click.version_option(version='1.0.2')
 def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float],
          zoom: Optional[int], output: str, bigtiff: bool, cache: str,
-         workers: int, compression: str, no_cache: bool, clear_cache: bool):
+         workers: int, compression: str, no_cache: bool, clear_cache: bool,
+         source: str, cloud_cover: float):
     """
-    Download Google satellite imagery and export as GeoTIFF.
+    Download satellite imagery and export as GeoTIFF.
 
     \b
     Examples:
-        # Using bbox
+        # Using bbox with Google
         satellite-download --bbox 110,30,110.1,30.1 --resolution 0.0001 --output area.tif
+
+        # Using Sentinel-2 data
+        satellite-download --bbox 110,30,110.1,30.1 --source sentinel2 --zoom 14 --output area.tif
 
         # Using extent string
         satellite-download --extent "E110-E110.1,N30-N30.1" --resolution 0.0001 --output area.tif
@@ -58,6 +68,12 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
         satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff
     """
     try:
+        # Create data source
+        data_source = DataSourceFactory.get_source(
+            source,
+            max_cloud_cover=cloud_cover
+        )
+
         # Parse bounding box
         if bbox:
             min_lon, min_lat, max_lon, max_lat = parse_bbox_str(bbox)
@@ -81,6 +97,16 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
             click.echo("Error: Either --resolution or --zoom must be specified", err=True)
             sys.exit(1)
 
+        # Validate zoom level for the data source
+        supported_zooms = data_source.get_supported_zoom_levels()
+        if zoom not in supported_zooms:
+            click.echo(
+                f"Error: Zoom level {zoom} is not supported by {data_source.get_name()}. "
+                f"Supported range: {supported_zooms.start}-{supported_zooms.stop - 1}",
+                err=True
+            )
+            sys.exit(1)
+
         # Get tile information
         tiles, (x_min, y_min, x_max, y_max) = get_tiles_in_bbox(
             min_lon, min_lat, max_lon, max_lat, zoom
@@ -100,13 +126,17 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
                 click.echo(f"Clearing cache: {cache}")
                 cache_manager.clear()
 
-        # Setup downloader
+        # Setup downloader with data source
         downloader = TileDownloader(
             cache_manager=cache_manager,
             max_workers=workers,
             retry_count=3,
-            request_delay=0.05
+            request_delay=0.05,
+            data_source=data_source
         )
+
+        # Display data source info
+        click.echo(f"Data source: {data_source.get_description()}")
 
         # Get tile info (including cached tiles)
         tile_info = downloader.get_tile_info(

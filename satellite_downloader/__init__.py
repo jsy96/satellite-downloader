@@ -1,15 +1,16 @@
 """
-Satellite Downloader - Download Google satellite imagery as GeoTIFF.
+Satellite Downloader - Download satellite imagery as GeoTIFF.
 
-A Python tool for downloading satellite imagery from Google's XYZ tile service
-and exporting it as georeferenced GeoTIFF files with EPSG:4326 support.
+A Python tool for downloading satellite imagery from multiple sources
+(Google, Sentinel-2, etc.) and exporting it as georeferenced GeoTIFF files.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
 from .cache import CacheManager
+from .datasources import DataSource, DataSourceFactory, GoogleDataSource, Sentinel2DataSource
 from .downloader import TileDownloader
 from .geotiff import GeoTIFFWriter, create_geotiff
 from .tiles import (
@@ -42,6 +43,12 @@ __all__ = [
     'CacheManager',
     'TileDownloader',
     'GeoTIFFWriter',
+
+    # Data sources
+    'DataSource',
+    'DataSourceFactory',
+    'GoogleDataSource',
+    'Sentinel2DataSource',
 
     # Main functions
     'create_geotiff',

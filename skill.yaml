@@ -1,7 +1,7 @@
 name: satellite-download
 display_name: Satellite Downloader
-description: Download Google satellite imagery for a specified area and export as GeoTIFF
-version: 1.0.1
+description: Download satellite imagery (Google, Sentinel-2) for a specified area and export as GeoTIFF
+version: 1.1.0
 author: jsy96
 repository: https://github.com/jsy96/satellite-downloader
 
@@ -27,7 +27,7 @@ parameters:
 
   - name: zoom
     type: integer
-    description: Explicit zoom level (overrides resolution)
+    description: Explicit zoom level (overrides resolution). Google: 0-20, Sentinel-2: 0-14
     example: 14
     required: false
 
@@ -36,6 +36,18 @@ parameters:
     description: Output GeoTIFF file path
     example: "area.tif"
     required: true
+
+  - name: source
+    type: string
+    description: Data source: google (default), sentinel2, sentinel-2, or s2
+    example: "sentinel2"
+    required: false
+
+  - name: cloud_cover
+    type: float
+    description: Maximum cloud cover percentage for Sentinel-2 (default: 20)
+    example: 10.0
+    required: false
 
   - name: bigtiff
     type: boolean
@@ -63,8 +75,14 @@ parameters:
 
 # Examples for users
 examples:
-  - description: Download small area with resolution
+  - description: Download small area with Google
     command: satellite-download --bbox 110,30,110.1,30.1 --resolution 0.0001 --output area.tif
+
+  - description: Download with Sentinel-2
+    command: satellite-download --bbox 110,30,110.1,30.1 --source sentinel2 --zoom 14 --output area.tif
+
+  - description: Download with Sentinel-2 and low cloud cover
+    command: satellite-download --bbox 110,30,110.1,30.1 --source s2 --cloud-cover 10 --zoom 14 --output area.tif
 
   - description: Download with explicit zoom level
     command: satellite-download --bbox 110,30,110.1,30.1 --zoom 18 --output area.tif

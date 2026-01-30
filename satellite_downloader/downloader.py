@@ -1,7 +1,7 @@
 """
 Tile downloader with caching and retry support.
 
-Downloads satellite imagery tiles from Google XYZ tile service
+Downloads satellite imagery tiles from various data sources
 with support for concurrent downloads and caching.
 """
 
@@ -14,29 +14,29 @@ import requests
 from PIL import Image
 
 from .cache import CacheManager
+from .datasources import DataSource, GoogleDataSource, DataSourceFactory
 from .tiles import get_tiles_in_bbox
 
 
 class TileDownloader:
     """
-    Downloads satellite imagery tiles from Google XYZ tile service.
+    Downloads satellite imagery tiles from various data sources.
 
     Features:
+    - Multiple data source support (Google, Sentinel-2, etc.)
     - Concurrent downloads with thread pool
     - Automatic retry on failure
     - Caching support for resume capability
     - Progress tracking
     """
 
-    # Google satellite tile URL template
-    TILE_URL = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-
-    # User agent to avoid blocking
+    # Default user agent to avoid blocking
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
     def __init__(self, cache_manager: Optional[CacheManager] = None,
                  max_workers: int = 8, retry_count: int = 3,
-                 request_delay: float = 0.1):
+                 request_delay: float = 0.1,
+                 data_source: Optional[DataSource] = None):
         """
         Initialize tile downloader.
 
@@ -45,11 +45,13 @@ class TileDownloader:
             max_workers: Maximum number of concurrent download threads
             retry_count: Number of retries for failed downloads
             request_delay: Delay between requests in seconds
+            data_source: Data source to use (defaults to Google)
         """
         self.cache = cache_manager or CacheManager()
         self.max_workers = max_workers
         self.retry_count = retry_count
         self.request_delay = request_delay
+        self.data_source = data_source or GoogleDataSource()
 
         # Configure session
         self.session = requests.Session()
@@ -57,9 +59,18 @@ class TileDownloader:
             'User-Agent': self.USER_AGENT
         })
 
+        # Add auth headers if required
+        if self.data_source.requires_auth():
+            auth_headers = self.data_source.get_auth_headers()
+            self.session.headers.update(auth_headers)
+
     def _build_tile_url(self, x: int, y: int, zoom: int) -> str:
         """Build tile URL for given coordinates."""
-        return self.TILE_URL.format(x=x, y=y, z=zoom)
+        return self.data_source.get_tile_url(x, y, zoom)
+
+    def get_data_source(self) -> DataSource:
+        """Get the current data source."""
+        return self.data_source
 
     def _download_tile_data(self, x: int, y: int, zoom: int) -> Optional[bytes]:
         """

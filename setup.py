@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="satellite-downloader",
-    version="1.0.0",
+    version="1.1.0",
     author="Your Name",
     author_email="your.email@example.com",
-    description="Download Google satellite imagery and export as GeoTIFF",
+    description="Download satellite imagery (Google, Sentinel-2) and export as GeoTIFF",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/your-username/satellite-downloader",
