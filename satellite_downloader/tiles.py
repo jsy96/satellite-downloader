@@ -153,7 +153,8 @@ def get_tiles_in_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: f
 
     tiles = []
     for x in range(x_min, x_max + 1):
-        for y in range(y_min, y_max + 1):
+        # Note: y_max <= y_min in tile coordinates (Y increases downward)
+        for y in range(y_max, y_min + 1):
             tiles.append((x, y))
 
     return tiles, (x_min, y_min, x_max, y_max)

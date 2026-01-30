@@ -8,7 +8,7 @@ and supports BigTIFF format for large files.
 import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 
 from .tiles import tile_to_lonlat, TILE_SIZE
 
@@ -55,7 +55,7 @@ class GeoTIFFWriter:
 
         return 'IF_SAFER'
 
-    def _merge_tiles(self, tiles: List[Tuple, int, int],
+    def _merge_tiles(self, tiles: List[Tuple[Any, int, int]],
                      tile_info: Dict) -> np.ndarray:
         """
         Merge tiles into a single image array.
@@ -74,7 +74,8 @@ class GeoTIFFWriter:
 
         # Calculate output dimensions
         tiles_x = x_max - x_min + 1
-        tiles_y = y_max - y_min + 1
+        # Note: In tile coords, y_max <= y_min (Y increases downward from top)
+        tiles_y = y_min - y_max + 1
         width = tiles_x * TILE_SIZE
         height = tiles_y * TILE_SIZE
 
@@ -94,7 +95,8 @@ class GeoTIFFWriter:
 
             # Calculate position
             px = (x - x_min) * TILE_SIZE
-            py = (y - y_min) * TILE_SIZE
+            # For Y: reference from y_max (top) since Y increases downward
+            py = (y - y_max) * TILE_SIZE
 
             # Ensure image is 256x256
             if img_array.shape[:2] != (TILE_SIZE, TILE_SIZE):
@@ -125,12 +127,13 @@ class GeoTIFFWriter:
         zoom = tile_info['zoom']
 
         # Get bounds
-        left, top = tile_to_lonlat(x_min, y_min, zoom)
-        right, bottom = tile_to_lonlat(x_max + 1, y_max + 1, zoom)
+        # Note: In tile coords, y_max is top (smaller value), y_min is bottom (larger value)
+        left, top = tile_to_lonlat(x_min, y_max, zoom)
+        right, bottom = tile_to_lonlat(x_max + 1, y_min + 1, zoom)
 
         return left, bottom, right, top
 
-    def create_geotiff(self, tiles: List[Tuple, int, int],
+    def create_geotiff(self, tiles: List[Tuple[Any, int, int]],
                        tile_info: Dict,
                        output_path: str) -> Dict:
         """
@@ -227,7 +230,8 @@ class GeoTIFFWriter:
 
         # Calculate dimensions
         tiles_x = x_max - x_min + 1
-        tiles_y = y_max - y_min + 1
+        # Note: In tile coords, y_max <= y_min (Y increases downward from top)
+        tiles_y = y_min - y_max + 1
         width = tiles_x * TILE_SIZE
         height = tiles_y * TILE_SIZE
 
@@ -264,12 +268,12 @@ class GeoTIFFWriter:
                 chunk.append(item)
 
                 if len(chunk) >= chunk_size:
-                    self._write_chunk(dst, chunk, x_min, y_min)
+                    self._write_chunk(dst, chunk, x_min, y_max)
                     chunk = []
 
             # Write remaining tiles
             if chunk:
-                self._write_chunk(dst, chunk, x_min, y_min)
+                self._write_chunk(dst, chunk, x_min, y_max)
 
             # Add metadata
             dst.update_tags(
@@ -291,7 +295,7 @@ class GeoTIFFWriter:
             'compression': self.compression
         }
 
-    def _write_chunk(self, dst, chunk: List, x_min: int, y_min: int):
+    def _write_chunk(self, dst, chunk: List, x_min: int, y_max: int):
         """Write a chunk of tiles to the GeoTIFF."""
         for img, x, y in chunk:
             img_array = np.array(img)
@@ -304,7 +308,8 @@ class GeoTIFFWriter:
 
             # Calculate window position
             px = (x - x_min) * TILE_SIZE
-            py = (y - y_min) * TILE_SIZE
+            # For Y: reference from y_max (top) since Y increases downward
+            py = (y - y_max) * TILE_SIZE
 
             # Define window
             window = rasterio.windows.Window(px, py, TILE_SIZE, TILE_SIZE)
@@ -314,7 +319,7 @@ class GeoTIFFWriter:
             dst.write(data, window=window)
 
 
-def create_geotiff(tiles: List[Tuple, int, int],
+def create_geotiff(tiles: List[Tuple[Any, int, int]],
                    tile_info: Dict,
                    output_path: str,
                    bigtiff: bool = False,
