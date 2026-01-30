@@ -132,6 +132,37 @@ def calculate_zoom(resolution: float, lat: float = 0) -> int:
     return max(0, min(25, int(round(zoom))))
 
 
+def calculate_resolution_from_zoom(zoom: int, lat: float = 0) -> float:
+    """
+    Calculate the resolution for a given zoom level.
+
+    Args:
+        zoom: Zoom level
+        lat: Latitude (affects meters per degree)
+
+    Returns:
+        Resolution in degrees
+
+    Note:
+        This is the inverse of calculate_zoom.
+        Resolution varies with latitude due to the Mercator projection.
+    """
+    if not 0 <= zoom <= 25:
+        raise ValueError(f"Zoom level must be between 0 and 25, got {zoom}")
+
+    # Meters per degree at the given latitude
+    meters_per_degree = 111320 * math.cos(math.radians(lat))
+
+    # Calculate ground resolution in meters for this zoom level
+    # Formula: resolution = EARTH_CIRCUMFERENCE / (TILE_SIZE * 2^zoom)
+    ground_resolution = EARTH_CIRCUMFERENCE / (TILE_SIZE * (2 ** zoom))
+
+    # Convert to degrees
+    resolution = ground_resolution / meters_per_degree
+
+    return resolution
+
+
 def get_tiles_in_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float,
                       zoom: int) -> List[Tuple[int, int]]:
     """

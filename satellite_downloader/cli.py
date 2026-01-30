@@ -14,7 +14,7 @@ from .cache import CacheManager
 from .downloader import TileDownloader
 from .geotiff import GeoTIFFWriter
 from .tiles import (
-    calculate_zoom, get_tiles_in_bbox,
+    calculate_zoom, calculate_resolution_from_zoom, get_tiles_in_bbox,
     parse_bbox as parse_bbox_str, parse_extent as parse_extent_str
 )
 from .utils import (
@@ -87,6 +87,10 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
         )
         tile_count = len(tiles)
 
+        # Calculate actual resolution from final zoom level
+        center_lat = (min_lat + max_lat) / 2
+        actual_resolution = calculate_resolution_from_zoom(zoom, center_lat)
+
         # Setup cache manager
         if no_cache:
             cache_manager = None
@@ -112,7 +116,7 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
         # Print summary
         summary = {
             'bbox': (min_lon, min_lat, max_lon, max_lat),
-            'resolution': resolution if resolution else None,
+            'resolution': actual_resolution,  # Use actual resolution from zoom level
             'zoom': zoom,
             'tile_count': tile_count,
             'output': output,
