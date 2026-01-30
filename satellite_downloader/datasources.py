@@ -149,62 +149,6 @@ class Sentinel2DataSource(DataSource):
     def requires_auth(self) -> bool:
         return False  # NASA GIBS is free
 
-    def search_scenes(self, bbox: Tuple[float, float, float, float],
-                     start_date: Optional[str] = None,
-                     end_date: Optional[str] = None,
-                     limit: int = 10) -> List[Dict]:
-        """
-        Search for available Sentinel-2 scenes using STAC API.
-
-        Args:
-            bbox: Bounding box (min_lon, min_lat, max_lon, max_lat)
-            start_date: Start date in ISO format (YYYY-MM-DD)
-            end_date: End date in ISO format (YYYY-MM-DD)
-            limit: Maximum number of results
-
-        Returns:
-            List of scene metadata
-        """
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        # Build STAC search query
-        search_url = f"{self.BASE_URL}/stac/search"
-        params = {
-            "collections": [self.COLLECTION],
-            "bbox": [min_lon, min_lat, max_lon, max_lat],
-            "limit": limit,
-            "query": {
-                "eo:cloud_cover": {
-                    "lt": self.max_cloud_cover
-                }
-            }
-        }
-
-        # Add date range if specified
-        if start_date or end_date:
-            date_range = f"{start_date or '..'}/{end_date or '..'}"
-            params["time"] = date_range
-
-        try:
-            response = self.session.post(search_url, json=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-
-            scenes = []
-            for feature in data.get("features", []):
-                scenes.append({
-                    "id": feature["id"],
-                    "datetime": feature["properties"].get("datetime"),
-                    "cloud_cover": feature["properties"].get("eo:cloud_cover", 0),
-                    "geometry": feature.get("geometry"),
-                    "assets": feature.get("assets", {})
-                })
-
-            return scenes
-        except requests.RequestException as e:
-            print(f"Warning: STAC search failed: {e}")
-            return []
-
 
 class LandsatDataSource(DataSource):
     """
