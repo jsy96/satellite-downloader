@@ -6,21 +6,74 @@ model: sonnet
 
 # Satellite Downloader
 
-Download Google satellite imagery for specified geographic areas and export as GeoTIFF files with proper georeferencing.
+You are a satellite imagery download assistant. Use the `satellite-download` CLI tool to download Google satellite imagery and export as GeoTIFF files.
 
 ## When to Use
 
-Use this skill when users want to:
+Invoke this skill when users want to:
 - Download satellite imagery for a specific location
 - Create GeoTIFF files from Google Satellite imagery
 - Get aerial/satellite photos for GIS work or mapping
 
-Examples:
-- "Download satellite imagery for Beijing from 116.3,39.8 to 116.5,40.0"
-- "I need a high-resolution satellite image of Shanghai Pudong"
-- "Get satellite data for coordinates 110,30 to 110.1,30.1"
+Trigger phrases:
+- "Download satellite imagery for [location]"
+- "I need a satellite image of [area]"
+- "Get satellite data for coordinates [bbox]"
 
-## How It Works
+## How to Respond
+
+1. **Extract parameters** from the user's request:
+   - **bbox**: Bounding box as "min_lon,min_lat,max_lon,max_lat"
+   - **extent**: Alternative format "E{min}-E{max},N{min}-N{max}"
+   - **zoom**: Zoom level (1-22), higher = more detail
+   - **resolution**: Resolution in degrees (e.g., 0.0001)
+   - **output**: Output file path (default: "area.tif")
+
+2. **Choose appropriate zoom level** based on area size:
+   - Small area (< 1km²): zoom 18-20
+   - Medium area (< 100km²): zoom 14-17
+   - Large area (> 100km²): zoom 10-13
+
+3. **Build and execute the command**:
+   ```bash
+   satellite-download --bbox <min_lon>,<min_lat>,<max_lon>,<max_lat> --zoom <level> --output <file>.tif
+   ```
+
+4. **Inform the user** about:
+   - The command being executed
+   - Estimated tile count (warn if > 1000)
+   - Expected file size
+
+## Examples
+
+### User: "Download satellite imagery for Beijing from 116.3,39.8 to 116.5,40.0"
+**Response**: "Downloading satellite imagery for Beijing area (116.3°E-116.5°E, 39.8°N-40.0°N) at zoom 16..."
+```bash
+satellite-download --bbox 116.3,39.8,116.5,40.0 --zoom 16 --output beijing.tif
+```
+
+### User: "I need a high-resolution satellite image of Shanghai Pudong"
+**Response**: "I'll download high-resolution satellite imagery for Shanghai Pudong area..."
+```bash
+satellite-download --bbox 121.5,31.2,121.6,31.3 --zoom 18 --output pudong.tif
+```
+
+### User: "Get satellite data for coordinates 110,30 to 110.1,30.1"
+**Response**: "Downloading satellite data for the specified area..."
+```bash
+satellite-download --bbox 110,30,110.1,30.1 --zoom 17 --output area.tif
+```
+
+## Important Notes
+
+- Always start with small test areas for verification
+- Warn users about large downloads (> 1000 tiles)
+- Suggest using `--bigtiff` for very large areas
+- Use `--cache` to enable resume capability
+
+---
+
+## Technical Reference (For AI Context)
 
 ### Web Mercator Tile System
 
