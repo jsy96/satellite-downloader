@@ -9,11 +9,38 @@ AI Skill for downloading Google satellite imagery and exporting as GeoTIFF forma
 - Export to GeoTIFF format with BigTIFF support
 - Resume capability with cache management
 - Progress bar for download status
+- **Available as Claude Code Skill**
 
 ## Installation
 
 ```bash
 pip install -e .
+```
+
+## As Claude Code Skill
+
+Install this skill in Claude Code to download satellite imagery directly from your AI conversations:
+
+```bash
+# From the repository directory
+cd satellite-downloader
+# Claude Code will automatically recognize it as a skill
+```
+
+### Using in Claude Code
+
+Once installed, you can use natural language to request downloads:
+
+```
+Download satellite imagery for Beijing area from 116.3,39.8 to 116.5,40.0
+```
+
+```
+I need a high-resolution satellite image of Shanghai Pudong area
+```
+
+```
+Get satellite data for coordinates 110,30 to 110.1,30.1 with zoom level 18
 ```
 
 ## Usage

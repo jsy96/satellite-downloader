@@ -1,0 +1,76 @@
+name: satellite-download
+display_name: Satellite Downloader
+description: Download Google satellite imagery for a specified area and export as GeoTIFF
+version: 1.0.1
+author: jsy96
+repository: https://github.com/jsy96/satellite-downloader
+
+# Parameters that users can specify
+parameters:
+  - name: bbox
+    type: string
+    description: Bounding box in format "min_lon,min_lat,max_lon,max_lat"
+    example: "110,30,110.1,30.1"
+    required: true
+
+  - name: extent
+    type: string
+    description: Alternative extent format "E{min}-E{max},N{min}-N{max}"
+    example: "E110-E110.1,N30-N30.1"
+    required: false
+
+  - name: resolution
+    type: float
+    description: Output resolution in degrees (e.g., 0.0001 for high resolution)
+    example: 0.0001
+    required: false
+
+  - name: zoom
+    type: integer
+    description: Explicit zoom level (overrides resolution)
+    example: 14
+    required: false
+
+  - name: output
+    type: string
+    description: Output GeoTIFF file path
+    example: "area.tif"
+    required: true
+
+  - name: bigtiff
+    type: boolean
+    description: Force BigTIFF format for large areas
+    default: false
+    required: false
+
+  - name: cache
+    type: string
+    description: Cache directory for resume capability
+    default: ".tile_cache"
+    required: false
+
+  - name: workers
+    type: integer
+    description: Number of download workers
+    default: 8
+    required: false
+
+  - name: compression
+    type: string
+    description: Compression method (lzw, deflate, jpeg, none)
+    default: "lzw"
+    required: false
+
+# Examples for users
+examples:
+  - description: Download small area with resolution
+    command: satellite-download --bbox 110,30,110.1,30.1 --resolution 0.0001 --output area.tif
+
+  - description: Download with explicit zoom level
+    command: satellite-download --bbox 110,30,110.1,30.1 --zoom 18 --output area.tif
+
+  - description: Download large area with BigTIFF
+    command: satellite-download --bbox 110,30,111,31 --resolution 0.0001 --output large.tif --bigtiff
+
+# CLI command to execute
+command: satellite-download
