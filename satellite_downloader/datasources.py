@@ -300,7 +300,7 @@ class EsriDataSource(DataSource):
     TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         self.session.headers.update({
             'User-Agent': self.USER_AGENT
@@ -341,7 +341,7 @@ class OSMDataSource(DataSource):
     TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         self.session.headers.update({
             'User-Agent': self.USER_AGENT
