@@ -13,7 +13,8 @@ from typing import Tuple, List
 TILE_SIZE = 256
 
 # Earth circumference in meters (at equator)
-EARTH_CIRCUMFERENCE = 40075016.68
+# Using sphere radius 6378137m as defined in EPSG:3857
+EARTH_CIRCUMFERENCE = 2 * 3.14159265358979323846 * 6378137
 
 
 def lonlat_to_tile(lon: float, lat: float, zoom: int) -> Tuple[int, int]:
