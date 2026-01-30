@@ -10,7 +10,7 @@ import rasterio
 from rasterio.transform import from_bounds
 from typing import List, Tuple, Dict, Optional, Any
 
-from .tiles import tile_to_lonlat, TILE_SIZE
+from .tiles import tile_to_mercator, tile_to_lonlat, TILE_SIZE
 
 
 class GeoTIFFWriter:
@@ -112,13 +112,16 @@ class GeoTIFFWriter:
 
     def _calculate_bounds(self, tile_info: Dict) -> Tuple[float, float, float, float]:
         """
-        Calculate geographic bounds for the tile area.
+        Calculate bounds for the tile area in Web Mercator (EPSG:3857) coordinates.
+
+        Using Web Mercator ensures tiles are square (equal meters per pixel)
+        and prevents image distortion when viewing in GIS software.
 
         Args:
             tile_info: Dictionary with tile coordinates
 
         Returns:
-            Tuple of (left, bottom, right, top) in degrees
+            Tuple of (left, bottom, right, top) in meters (Web Mercator)
         """
         x_min = tile_info['x_min']
         y_min = tile_info['y_min']
@@ -126,10 +129,10 @@ class GeoTIFFWriter:
         y_max = tile_info['y_max']
         zoom = tile_info['zoom']
 
-        # Get bounds
+        # Get bounds in Web Mercator coordinates (meters)
         # Note: In tile coords, y_max is top (smaller value), y_min is bottom (larger value)
-        left, top = tile_to_lonlat(x_min, y_max, zoom)
-        right, bottom = tile_to_lonlat(x_max + 1, y_min + 1, zoom)
+        left, top = tile_to_mercator(x_min, y_max, zoom)
+        right, bottom = tile_to_mercator(x_max + 1, y_min + 1, zoom)
 
         return left, bottom, right, top
 
@@ -168,7 +171,7 @@ class GeoTIFFWriter:
             'width': width,
             'count': 3,  # RGB
             'dtype': 'uint8',
-            'crs': 'EPSG:4326',
+            'crs': 'EPSG:3857',  # Web Mercator (same as Google Maps)
             'transform': transform,
             'BIGTIFF': bigtiff_setting,
             'compress': self.compression,
@@ -193,14 +196,24 @@ class GeoTIFFWriter:
                 tile_count=len(tiles)
             )
 
+        # Also calculate geographic bounds for display purposes
+        x_min = tile_info['x_min']
+        y_min = tile_info['y_min']
+        x_max = tile_info['x_max']
+        y_max = tile_info['y_max']
+        zoom = tile_info['zoom']
+        geo_left, geo_top = tile_to_lonlat(x_min, y_max, zoom)
+        geo_right, geo_bottom = tile_to_lonlat(x_max + 1, y_min + 1, zoom)
+
         return {
             'path': output_path,
             'width': width,
             'height': height,
             'bands': 3,
             'dtype': 'uint8',
-            'crs': 'EPSG:4326',
+            'crs': 'EPSG:3857',  # Web Mercator
             'bounds': (left, bottom, right, top),
+            'geo_bounds': (geo_left, geo_bottom, geo_right, geo_top),  # Geographic bounds in degrees
             'bigtiff': bigtiff_setting == 'YES',
             'compression': self.compression
         }
@@ -250,7 +263,7 @@ class GeoTIFFWriter:
             'width': width,
             'count': 3,
             'dtype': 'uint8',
-            'crs': 'EPSG:4326',
+            'crs': 'EPSG:3857',  # Web Mercator
             'transform': transform,
             'BIGTIFF': bigtiff_setting,
             'compress': self.compression,
@@ -283,14 +296,24 @@ class GeoTIFFWriter:
                 tile_count=tile_count
             )
 
+        # Also calculate geographic bounds for display purposes
+        x_min = tile_info['x_min']
+        y_min = tile_info['y_min']
+        x_max = tile_info['x_max']
+        y_max = tile_info['y_max']
+        zoom = tile_info['zoom']
+        geo_left, geo_top = tile_to_lonlat(x_min, y_max, zoom)
+        geo_right, geo_bottom = tile_to_lonlat(x_max + 1, y_min + 1, zoom)
+
         return {
             'path': output_path,
             'width': width,
             'height': height,
             'bands': 3,
             'dtype': 'uint8',
-            'crs': 'EPSG:4326',
+            'crs': 'EPSG:3857',  # Web Mercator
             'bounds': (left, bottom, right, top),
+            'geo_bounds': (geo_left, geo_bottom, geo_right, geo_top),  # Geographic bounds in degrees
             'bigtiff': bigtiff_setting == 'YES',
             'compression': self.compression
         }

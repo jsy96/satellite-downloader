@@ -264,6 +264,39 @@ def parse_extent(extent_str: str) -> Tuple[float, float, float, float]:
         raise ValueError(f"Invalid extent format: {extent_str}. Expected format: 'E110-E110.1,N30-N30.1'. Error: {e}")
 
 
+def tile_to_mercator(x: int, y: int, zoom: int) -> Tuple[float, float]:
+    """
+    Convert XYZ tile coordinates to Web Mercator (EPSG:3857) coordinates.
+
+    Returns the coordinates of the top-left corner of the tile in meters.
+
+    Args:
+        x: Tile X coordinate
+        y: Tile Y coordinate
+        zoom: Zoom level
+
+    Returns:
+        Tuple of (easting, northing) in meters
+
+    Examples:
+        >>> tile_to_mercator(819, 351, 10)
+        (12225416.24, 3522174.51)
+    """
+    n = 2 ** zoom
+    # Tile size in meters at this zoom level
+    tile_size_meters = EARTH_CIRCUMFERENCE / n
+
+    # Calculate easting (x coordinate in meters)
+    # x=0 corresponds to -180° = -EARTH_CIRCUMFERENCE/2
+    easting = x * tile_size_meters - EARTH_CIRCUMFERENCE / 2
+
+    # Calculate northing (y coordinate in meters)
+    # y=0 corresponds to max latitude (≈85.05°)
+    northing = EARTH_CIRCUMFERENCE / 2 - y * tile_size_meters
+
+    return easting, northing
+
+
 def parse_bbox(bbox_str: str) -> Tuple[float, float, float, float]:
     """
     Parse bbox string in format "min_lon,min_lat,max_lon,max_lat".

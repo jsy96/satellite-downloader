@@ -15,6 +15,7 @@ from .geotiff import GeoTIFFWriter, create_geotiff
 from .tiles import (
     lonlat_to_tile,
     tile_to_lonlat,
+    tile_to_mercator,
     tile_bounds,
     calculate_zoom,
     calculate_resolution_from_zoom,
@@ -48,6 +49,7 @@ __all__ = [
     # Tile utilities
     'lonlat_to_tile',
     'tile_to_lonlat',
+    'tile_to_mercator',
     'tile_bounds',
     'calculate_zoom',
     'calculate_resolution_from_zoom',

@@ -182,9 +182,12 @@ def main(bbox: Optional[str], extent: Optional[str], resolution: Optional[float]
         click.echo("=" * 50)
         click.echo(f"File: {result['path']}")
         click.echo(f"Size: {result['width']} x {result['height']} pixels")
-        click.echo(f"Bounds: [{result['bounds'][0]:.6f}, {result['bounds'][1]:.6f}, "
-                   f"{result['bounds'][2]:.6f}, {result['bounds'][3]:.6f}]")
-        click.echo(f"CRS: {result['crs']}")
+        # Display geographic bounds (degrees) for user convenience
+        if 'geo_bounds' in result:
+            geo_left, geo_bottom, geo_right, geo_top = result['geo_bounds']
+            click.echo(f"Bounds (lat/lon): [{geo_left:.6f}, {geo_bottom:.6f}, "
+                       f"{geo_right:.6f}, {geo_top:.6f}]")
+        click.echo(f"CRS: {result['crs']} (Web Mercator)")
         if result['bigtiff']:
             click.echo("Format: BigTIFF")
         if result['compression']:
