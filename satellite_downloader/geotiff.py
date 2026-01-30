@@ -8,6 +8,7 @@ and supports BigTIFF format for large files.
 import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
+from rasterio.crs import CRS
 from typing import List, Tuple, Dict, Optional, Any
 
 from .tiles import tile_to_mercator, tile_to_lonlat, TILE_SIZE
@@ -164,26 +165,31 @@ class GeoTIFFWriter:
         # Determine BigTIFF setting
         bigtiff_setting = self._determine_bigtiff(width, height, tile_info.get('tile_count', len(tiles)))
 
-        # Create profile
+        # Create profile with explicit CRS
+        # Use CRS.from_epsg to ensure full coordinate system definition
+        crs_3857 = CRS.from_epsg(3857)
+
         profile = {
             'driver': 'GTiff',
             'height': height,
             'width': width,
             'count': 3,  # RGB
             'dtype': 'uint8',
-            'crs': 'EPSG:3857',  # Web Mercator (same as Google Maps)
+            'crs': crs_3857,  # Use CRS object for complete definition
             'transform': transform,
             'BIGTIFF': bigtiff_setting,
             'compress': self.compression,
             'tiled': True,
             'blockxsize': 256,
             'blockysize': 256,
-            'nodata': None
+            'nodata': None,
         }
 
         # Write GeoTIFF
         print(f"Writing GeoTIFF to {output_path}...")
         with rasterio.open(output_path, 'w', **profile) as dst:
+            # Explicitly set CRS to ensure it's written correctly
+            dst.crs = crs_3857
             # Rasterio expects (bands, height, width)
             data = np.transpose(merged, [2, 0, 1])
             dst.write(data)
@@ -256,14 +262,16 @@ class GeoTIFFWriter:
         tile_count = tiles_x * tiles_y
         bigtiff_setting = self._determine_bigtiff(width, height, tile_count)
 
-        # Create profile
+        # Create profile with explicit CRS
+        crs_3857 = CRS.from_epsg(3857)
+
         profile = {
             'driver': 'GTiff',
             'height': height,
             'width': width,
             'count': 3,
             'dtype': 'uint8',
-            'crs': 'EPSG:3857',  # Web Mercator
+            'crs': crs_3857,  # Use CRS object for complete definition
             'transform': transform,
             'BIGTIFF': bigtiff_setting,
             'compress': self.compression,
@@ -275,6 +283,8 @@ class GeoTIFFWriter:
         # Write in chunks
         print(f"Writing large GeoTIFF to {output_path}...")
         with rasterio.open(output_path, 'w', **profile) as dst:
+            # Explicitly set CRS to ensure it's written correctly
+            dst.crs = crs_3857
             chunk = []
 
             for item in tiles_generator:
