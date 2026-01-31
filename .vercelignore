@@ -30,3 +30,16 @@ test_*.aux.xml
 build/
 dist/
 *.egg-info/
+
+# Tests
+tests/
+pytest.ini
+.coverage
+htmlcov/
+
+# Other unnecessary files
+*.md
+setup.py
+skill.yaml
+SKILL.md
+日志.md

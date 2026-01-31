@@ -116,3 +116,5 @@ Thumbs.db
 .tile_cache/
 .claude/
 area.*
+
+.vercel

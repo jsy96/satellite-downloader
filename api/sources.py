@@ -1,32 +1,15 @@
-"""
-Vercel Serverless Function: Get available data sources
-"""
 import json
 import sys
 import os
 
-# Add parent directory to path to import satellite_downloader
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from satellite_downloader import DataSourceFactory
 
 
-def handler(request):
-    """Handle request to get data sources."""
-    # Handle CORS preflight
-    if request.method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            },
-            'body': ''
-        }
-
+def handler(event, context):
+    """Vercel Python handler function."""
     try:
-        # Get data sources
         factory = DataSourceFactory()
         sources = []
 

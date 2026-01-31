@@ -1,45 +1,20 @@
-"""
-Vercel Serverless Function: Start download task
-Note: Due to Vercel's 60s timeout limit, this returns the CLI command
-for the user to execute locally, or for small areas it may complete.
-"""
 import json
 import sys
 import os
 import uuid
 
-# Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def handler(request):
-    """Handle POST request to start download."""
-    # Handle CORS preflight
-    if request.method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            },
-            'body': ''
-        }
-
-    if request.method != 'POST':
-        return {
-            'statusCode': 405,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Method not allowed'})
-        }
-
+def handler(event, context):
+    """Vercel Python handler function."""
     try:
         # Parse request body
-        body = request.body if isinstance(request.body, str) else request.body.decode('utf-8')
-        params = json.loads(body) if body else {}
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            params = json.loads(body)
+        else:
+            params = body
 
         # Extract parameters
         bbox = params.get('bbox')
@@ -96,17 +71,14 @@ def handler(request):
 
         command = " ".join(cmd_parts)
 
-        # Determine if area is small enough for direct download
-        can_download_directly = area_km2 < 100  # < 100 km²
-
         response = {
             "task_id": task_id,
             "status": "queued",
             "command": command,
             "area_km2": round(area_km2, 2),
-            "can_download_directly": can_download_directly,
+            "can_download_directly": area_km2 < 100,
             "message": f"Area size: {area_km2:.2f} km². " +
-                      ("Download can be processed directly." if can_download_directly
+                      ("Download can be processed directly." if area_km2 < 100
                        else "Area too large for serverless processing. Please run the command locally."),
             "instructions": {
                 "option1": "Copy and run the command above in your terminal",
