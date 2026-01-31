@@ -1,0 +1,32 @@
+# Test files
+*.tif
+*.tiff
+*.aux.xml
+*.tif.aux.xml
+
+# Cache
+.tile_cache/
+__pycache__/
+*.py[cod]
+
+# Test outputs
+area.*
+test_*.tif
+test_*.aux.xml
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Git
+.git/
+.github/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
