@@ -575,37 +575,47 @@
             }
         }
 
-        // Convert lat/lon to tile coordinates using Leaflet's method
+        // Convert lat/lon to tile coordinates using Web Mercator projection
         function getTileRange(bounds, zoom) {
             const tileSize = 256;
-            const pixelOrigin = L.point(0, 0);
-            const mapMin = map.project(bounds.getNorthWest(), zoom);
-            const mapMax = map.project(bounds.getSouthEast(), zoom);
 
-            const minX = Math.floor(mapMin.x / tileSize);
-            const maxX = Math.floor((mapMax.x - 1) / tileSize);
-            const minY = Math.floor(mapMax.y / tileSize);
-            const maxY = Math.floor((mapMin.y - 1) / tileSize);
+            // Web Mercator projection bounds
+            const earthRadius = 6378137;
+            const earthCircumference = 2 * Math.PI * earthRadius;
+
+            // Convert lat/lon to tile coordinates
+            function lonToTile(lon, z) {
+                return Math.floor((lon + 180) / 360 * Math.pow(2, z));
+            }
+
+            function latToTile(lat, z) {
+                const latRad = lat * Math.PI / 180;
+                return Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z));
+            }
+
+            const xMin = lonToTile(bounds.getWest(), zoom);
+            const xMax = lonToTile(bounds.getEast(), zoom);
+            const yMin = latToTile(bounds.getSouth(), zoom);
+            const yMax = latToTile(bounds.getNorth(), zoom);
 
             return {
-                xMin: Math.max(0, minX),
-                xMax: Math.max(0, maxX),
-                yMin: Math.max(0, minY),
-                yMax: Math.max(0, maxY)
+                xMin: Math.max(0, xMin),
+                xMax: Math.max(0, xMax),
+                yMin: Math.max(0, yMin),
+                yMax: Math.max(0, yMax)
             };
         }
 
         // Get tile URL using Leaflet's tile layer format
         function getTileUrl(source, x, y, zoom) {
-            // Use Leaflet's built-in tile URL templates
-            const tileLayers = {
-                esri: L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`),
-                osm: L.tileLayer(`https://tile.openstreetmap.org/{z}/{x}/{y}.png`)
+            // Different services use different URL formats
+            const templates = {
+                // Esri: {level}/{row}/{col} = {z}/{y}/{x}
+                esri: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`,
+                // OSM: {z}/{x}/{y}
+                osm: `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
             };
-
-            const layer = tileLayers[source] || tileLayers.esri;
-            const tileUrl = layer.getTileUrl({ x, y, z: zoom });
-            return tileUrl;
+            return templates[source] || templates.esri;
         }
 
         // Browser-based download
