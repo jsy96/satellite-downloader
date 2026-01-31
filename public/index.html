@@ -631,7 +631,7 @@
             }
 
             const zoomInput = document.getElementById('zoomInput').value;
-            const zoom = zoomInput ? parseInt(zoomInput) : (source === 'esri' ? 17 : 15);
+            const zoom = zoomInput ? parseInt(zoomInput) : (source === 'esri' ? 15 : 15);
 
             // Get tile range using Leaflet's method
             const bounds = L.latLngBounds(
@@ -642,6 +642,10 @@
             const { xMin, xMax, yMin, yMax } = tileRange;
 
             const tileCount = (xMax - xMin + 1) * (yMax - yMin + 1);
+
+            // Debug: log tile range
+            console.log('Download params:', { source, zoom, xMin, xMax, yMin, yMax, tileCount });
+            console.log('Bounds:', currentBBox);
 
             // Limit tile count
             if (tileCount > 400) {
@@ -685,11 +689,13 @@
 
             // Download with concurrency limit
             const concurrency = 6;
+            let successCount = 0;
             for (let i = 0; i < tiles.length; i += concurrency) {
                 const batch = tiles.slice(i, i + concurrency);
                 await Promise.all(batch.map(async ({ x, y }) => {
                     try {
                         const url = getTileUrl(source, x, y, zoom);
+                        console.log('Fetching:', url);
                         const response = await fetch(url);
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -699,6 +705,7 @@
                         const posX = (x - xMin) * tileSize;
                         const posY = (y - yMin) * tileSize;
                         ctx.drawImage(img, posX, posY);
+                        successCount++;
 
                         completed++;
                         const progress = (completed / tileCount) * 100;
@@ -711,10 +718,27 @@
                 }));
             }
 
+            console.log('Download complete. Success:', successCount, '/', tileCount);
             downloadedCanvas = canvas;
 
-            // Convert to blob
-            canvas.toBlob((blob) => {
+            // Check if any tiles were loaded
+            if (successCount === 0) {
+                resultTitle.textContent = '❌ 下载失败 | Download Failed';
+                progressText.textContent = '没有成功下载任何瓦片，请检查网络或稍后重试';
+                return;
+            }
+
+            // Convert to blob (wrap in Promise)
+            try {
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob((b) => {
+                        if (b) {
+                            resolve(b);
+                        } else {
+                            reject(new Error('canvas.toBlob() returned null'));
+                        }
+                    }, 'image/png');
+                });
                 downloadedBlob = blob;
 
                 // Update UI
@@ -732,7 +756,11 @@
                 document.getElementById('resultArea').textContent = `${currentBBox.min_lon.toFixed(4)}, ${currentBBox.min_lat.toFixed(4)} - ${currentBBox.max_lon.toFixed(4)}, ${currentBBox.max_lat.toFixed(4)}`;
                 document.getElementById('resultTiles').textContent = `${tileCount} (${width}x${height}px)`;
                 document.getElementById('resultResolution').textContent = `Zoom ${zoom}`;
-            }, 'image/png');
+            } catch (e) {
+                console.error('Failed to convert canvas to blob:', e);
+                resultTitle.textContent = '❌ 转换失败 | Conversion Failed';
+                progressText.textContent = '图片转换失败: ' + e.message;
+            }
         }
 
         // Save image
