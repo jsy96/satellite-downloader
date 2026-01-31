@@ -7,6 +7,7 @@ with support for concurrent downloads and caching.
 
 import sys
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from typing import Dict, List, Tuple, Optional, Callable
@@ -17,6 +18,10 @@ from PIL import Image
 from .cache import CacheManager
 from .datasources import DataSource, Sentinel2DataSource, DataSourceFactory
 from .tiles import get_tiles_in_bbox
+
+
+# Global lock for PIL image operations (PIL is not thread-safe)
+_pil_lock = threading.Lock()
 
 
 class TileDownloader:
@@ -126,7 +131,11 @@ class TileDownloader:
             cached_data = self.cache.get_tile(zoom, x, y)
             if cached_data:
                 try:
-                    return Image.open(BytesIO(cached_data))
+                    with _pil_lock:
+                        img = Image.open(BytesIO(cached_data))
+                        # Load image data into memory to avoid lazy loading issues
+                        img.load()
+                        return img
                 except Exception as e:
                     print(f"Warning: Could not load cached tile ({zoom}, {x}, {y}): {e}", file=sys.stderr)
 
@@ -137,7 +146,10 @@ class TileDownloader:
 
         # Cache the downloaded data
         try:
-            img = Image.open(BytesIO(data))
+            with _pil_lock:
+                img = Image.open(BytesIO(data))
+                # Load image data into memory
+                img.load()
             if use_cache:
                 self.cache.put_tile(zoom, x, y, data)
             return img

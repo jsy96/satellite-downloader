@@ -33,7 +33,7 @@ from .utils import (
 @click.option('--output', '-o', type=str, required=True, help='Output GeoTIFF file path')
 @click.option('--bigtiff', is_flag=True, help='Force BigTIFF format')
 @click.option('--cache', type=str, default='.tile_cache', help='Cache directory for resume capability')
-@click.option('--workers', type=int, default=8, help='Number of download workers (default: 8)')
+@click.option('--workers', type=int, default=4, help='Number of download workers (default: 4)')
 @click.option('--compression', type=click.Choice(['lzw', 'deflate', 'jpeg', 'none']), default='lzw',
               help='Compression method (default: lzw)')
 @click.option('--no-cache', is_flag=True, help='Disable caching')
