@@ -348,7 +348,11 @@
                 </div>
 
                 <button class="btn btn-primary" id="downloadBtn" disabled>
-                    🚀 生成下载命令 | Generate Download Command
+                    🚀 浏览器直接下载 | Browser Download
+                </button>
+
+                <button class="btn btn-secondary" id="commandBtn" disabled>
+                    📋 获取命令行 | Get CLI Command
                 </button>
 
                 <button class="btn btn-secondary" id="clearBtn">
@@ -356,23 +360,37 @@
                 </button>
 
                 <div class="result-panel" id="resultPanel">
-                    <h3>✅ 下载命令已生成 | Download Command Ready</h3>
+                    <h3 id="resultTitle">📥 下载中... | Downloading...</h3>
 
-                    <div class="command-box">
-                        <code id="commandOutput"></code>
-                        <button class="copy-btn" id="copyBtn">复制 | Copy</button>
+                    <div id="downloadProgress" style="margin: 15px 0;">
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 20px; overflow: hidden;">
+                            <div id="progressBar" style="background: linear-gradient(90deg, #00d9ff, #00ff88); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="text-align: center; margin-top: 8px; font-size: 0.9rem;">
+                            <span id="progressText">准备下载...</span>
+                        </div>
                     </div>
 
-                    <ul class="info-list">
-                        <li><strong>数据源:</strong> <span id="resultSource"></span></li>
-                        <li><strong>区域面积:</strong> <span id="areaSize"></span></li>
-                    </ul>
+                    <div id="downloadComplete" style="display: none;">
+                        <div class="command-box" id="imagePreviewBox" style="display: none; text-align: center;">
+                            <img id="previewImage" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;">
+                        </div>
 
-                    <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 4px; font-size: 0.9rem;">
-                        <strong>⚠️ 使用说明:</strong><br>
-                        1. 复制上面的命令<br>
-                        2. 在终端中运行（需要安装 satellite-downloader）<br>
-                        3. 或使用 Claude Code 执行 skill
+                        <button class="btn btn-primary" id="saveImageBtn" style="margin-bottom: 15px;">
+                            💾 保存图片 | Save Image
+                        </button>
+
+                        <div class="command-box" id="commandBox" style="display: none;">
+                            <code id="commandOutput"></code>
+                            <button class="copy-btn" id="copyBtn">复制 | Copy</button>
+                        </div>
+
+                        <ul class="info-list">
+                            <li><strong>数据源:</strong> <span id="resultSource"></span></li>
+                            <li><strong>区域:</strong> <span id="resultArea"></span></li>
+                            <li><strong>瓦片数:</strong> <span id="resultTiles"></span></li>
+                            <li><strong>分辨率:</strong> <span id="resultResolution"></span></li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -537,34 +555,193 @@
             }
         }
 
+        // Convert lat/lon to tile coordinates
+        function lonToTile(lon, zoom) {
+            return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+        }
+
+        function latToTile(lat, zoom) {
+            return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
+        }
+
+        // Get tile URL for different sources
+        function getTileUrl(source, x, y, zoom) {
+            const sourceUrls = {
+                esri: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`,
+                osm: `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`,
+                sentinel2: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/COPERNICUS_S2_RADIOMETRY/default/2024-06-01/GoogleMapsCompatible/${zoom}/${y}/${x}.png`,
+                landsat: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/LC09_L1TP/default/2024-06-01/GoogleMapsCompatible/${zoom}/${y}/${x}.png`,
+                modis: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_TrueColor/default/2024-06-01/GoogleMapsCompatible/${zoom}/${y}/${x}.png`
+            };
+            return sourceUrls[source] || sourceUrls.esri;
+        }
+
+        let downloadedCanvas = null;
+        let downloadedBlob = null;
+
+        // Browser-based download
+        async function browserDownload() {
+            if (!currentBBox) return;
+
+            const source = document.getElementById('sourceSelect').value;
+            const dataSource = DATA_SOURCES[source];
+
+            if (!dataSource.available) {
+                alert('此数据源暂不可用，请选择 Esri 或 OSM');
+                return;
+            }
+
+            const zoomInput = document.getElementById('zoomInput').value;
+            const zoom = zoomInput ? parseInt(zoomInput) : (source === 'esri' ? 17 : 15);
+
+            // Calculate tile range
+            const xMin = lonToTile(currentBBox.min_lon, zoom);
+            const xMax = lonToTile(currentBBox.max_lon, zoom);
+            const yMin = latToTile(currentBBox.max_lat, zoom);
+            const yMax = latToTile(currentBBox.min_lat, zoom);
+
+            const tileCount = (xMax - xMin + 1) * (yMax - yMin + 1);
+
+            // Limit tile count
+            if (tileCount > 400) {
+                if (!confirm(`需要下载 ${tileCount} 个瓦片，这可能需要较长时间。是否继续？`)) {
+                    return;
+                }
+            }
+
+            // Show progress
+            const resultPanel = document.getElementById('resultPanel');
+            const resultTitle = document.getElementById('resultTitle');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const downloadComplete = document.getElementById('downloadComplete');
+
+            resultPanel.classList.add('show');
+            resultTitle.textContent = '📥 下载中... | Downloading...';
+            downloadComplete.style.display = 'none';
+            document.getElementById('downloadProgress').style.display = 'block';
+
+            // Calculate canvas size
+            const tileSize = 256;
+            const width = (xMax - xMin + 1) * tileSize;
+            const height = (yMax - yMin + 1) * tileSize;
+
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // Download tiles
+            let completed = 0;
+            const tiles = [];
+
+            for (let x = xMin; x <= xMax; x++) {
+                for (let y = yMin; y <= yMax; y++) {
+                    tiles.push({ x, y });
+                }
+            }
+
+            // Download with concurrency limit
+            const concurrency = 6;
+            for (let i = 0; i < tiles.length; i += concurrency) {
+                const batch = tiles.slice(i, i + concurrency);
+                await Promise.all(batch.map(async ({ x, y }) => {
+                    try {
+                        const url = getTileUrl(source, x, y, zoom);
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                        const blob = await response.blob();
+                        const img = await createImageBitmap(blob);
+
+                        const posX = (x - xMin) * tileSize;
+                        const posY = (y - yMin) * tileSize;
+                        ctx.drawImage(img, posX, posY);
+
+                        completed++;
+                        const progress = (completed / tileCount) * 100;
+                        progressBar.style.width = progress + '%';
+                        progressText.textContent = `下载中: ${completed}/${tileCount} (${Math.round(progress)}%)`;
+                    } catch (e) {
+                        console.warn(`Failed to load tile ${x}, ${y}:`, e);
+                        completed++;
+                    }
+                }));
+            }
+
+            downloadedCanvas = canvas;
+
+            // Convert to blob
+            canvas.toBlob((blob) => {
+                downloadedBlob = blob;
+
+                // Update UI
+                resultTitle.textContent = '✅ 下载完成! | Download Complete!';
+                document.getElementById('downloadProgress').style.display = 'none';
+                downloadComplete.style.display = 'block';
+
+                // Show preview
+                const previewImg = document.getElementById('previewImage');
+                previewImg.src = URL.createObjectURL(blob);
+                document.getElementById('imagePreviewBox').style.display = 'block';
+
+                // Update info
+                document.getElementById('resultSource').textContent = dataSource.name;
+                document.getElementById('resultArea').textContent = `${currentBBox.min_lon.toFixed(4)}, ${currentBBox.min_lat.toFixed(4)} - ${currentBBox.max_lon.toFixed(4)}, ${currentBBox.max_lat.toFixed(4)}`;
+                document.getElementById('resultTiles').textContent = `${tileCount} (${width}x${height}px)`;
+                document.getElementById('resultResolution').textContent = `Zoom ${zoom}`;
+            }, 'image/png');
+        }
+
+        // Save image
+        function saveImage() {
+            if (!downloadedBlob) return;
+
+            const source = document.getElementById('sourceSelect').value;
+            const bbox = `${currentBBox.min_lon.toFixed(4)}_${currentBBox.max_lon.toFixed(4)}_${currentBBox.min_lat.toFixed(4)}_${currentBBox.max_lat.toFixed(4)}`;
+
+            const filename = `satellite_${source}_${bbox}.png`;
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(downloadedBlob);
+            link.download = filename;
+            link.click();
+        }
+
+        // Generate CLI command
         function generateCommand() {
             if (!currentBBox) return;
 
             const source = document.getElementById('sourceSelect').value;
             const zoom = document.getElementById('zoomInput').value;
-            const cloudCover = document.getElementById('cloudCoverInput').value;
             const compression = document.getElementById('compressionSelect').value;
 
             const bbox = `${currentBBox.min_lon},${currentBBox.min_lat},${currentBBox.max_lon},${currentBBox.max_lat}`;
 
-            // Calculate area
-            const lonDiff = currentBBox.max_lon - currentBBox.min_lon;
-            const latDiff = currentBBox.max_lat - currentBBox.min_lat;
-            const areaKm2 = (lonDiff * 111) * (latDiff * 111);
-
-            // Build command
             let cmd = `satellite-download --bbox ${bbox} --source ${source}`;
-
             if (zoom) cmd += ` --zoom ${zoom}`;
-            if (cloudCover != 20) cmd += ` --cloud-cover ${cloudCover}`;
             if (compression != 'lzw') cmd += ` --compression ${compression}`;
             cmd += ` --output area_${source}.tif`;
 
-            // Display result
+            // Show command panel
+            const resultPanel = document.getElementById('resultPanel');
+            const resultTitle = document.getElementById('resultTitle');
+            const downloadComplete = document.getElementById('downloadComplete');
+            const commandBox = document.getElementById('commandBox');
+
+            resultPanel.classList.add('show');
+            resultTitle.textContent = '📋 命令行 | CLI Command';
+            document.getElementById('downloadProgress').style.display = 'none';
+            downloadComplete.style.display = 'block';
+            document.getElementById('imagePreviewBox').style.display = 'none';
+            commandBox.style.display = 'block';
+
             document.getElementById('commandOutput').textContent = cmd;
             document.getElementById('resultSource').textContent = DATA_SOURCES[source].name;
-            document.getElementById('areaSize').textContent = `${areaKm2.toFixed(2)} km²`;
-            document.getElementById('resultPanel').classList.add('show');
+            document.getElementById('resultArea').textContent = bbox;
+            document.getElementById('resultTiles').textContent = '-';
+            document.getElementById('resultResolution').textContent = zoom || 'Auto';
         }
 
         function copyCommand() {
@@ -584,6 +761,8 @@
             updateBBoxDisplay();
             updateDownloadButton();
             document.getElementById('resultPanel').classList.remove('show');
+            downloadedCanvas = null;
+            downloadedBlob = null;
         }
 
         // Event listeners
@@ -592,9 +771,11 @@
             updateSourceInfo();
 
             document.getElementById('sourceSelect').addEventListener('change', updateSourceInfo);
-            document.getElementById('downloadBtn').addEventListener('click', generateCommand);
+            document.getElementById('downloadBtn').addEventListener('click', browserDownload);
+            document.getElementById('commandBtn').addEventListener('click', generateCommand);
             document.getElementById('copyBtn').addEventListener('click', copyCommand);
             document.getElementById('clearBtn').addEventListener('click', clearSelection);
+            document.getElementById('saveImageBtn').addEventListener('click', saveImage);
         });
     </script>
 </body>
