@@ -273,25 +273,6 @@
             color: #00d9ff;
         }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-        }
-
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #00d9ff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         .footer {
             text-align: center;
             padding: 30px;
@@ -337,7 +318,11 @@
                 <div class="form-group">
                     <label for="sourceSelect">🌍 数据源 | Data Source</label>
                     <select id="sourceSelect">
-                        <option value="">加载中... | Loading...</option>
+                        <option value="sentinel2">Sentinel-2 (~10m)</option>
+                        <option value="landsat">Landsat (~30m)</option>
+                        <option value="modis">MODIS (~250m)</option>
+                        <option value="esri">Esri World Imagery (~1m)</option>
+                        <option value="osm">OpenStreetMap (Vector)</option>
                     </select>
                     <div class="source-info" id="sourceInfo"></div>
                 </div>
@@ -379,15 +364,14 @@
                     </div>
 
                     <ul class="info-list">
-                        <li><strong>任务ID:</strong> <span id="taskId"></span></li>
+                        <li><strong>数据源:</strong> <span id="resultSource"></span></li>
                         <li><strong>区域面积:</strong> <span id="areaSize"></span></li>
-                        <li><strong>状态:</strong> <span id="status"></span></li>
                     </ul>
 
-                    <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 4px;">
-                        <strong>⚠️ 使用说明 | Instructions:</strong><br>
+                    <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 4px; font-size: 0.9rem;">
+                        <strong>⚠️ 使用说明:</strong><br>
                         1. 复制上面的命令<br>
-                        2. 在已安装 satellite-downloader 的终端中运行<br>
+                        2. 在终端中运行（需要安装 satellite-downloader）<br>
                         3. 或使用 Claude Code 执行 skill
                     </div>
                 </div>
@@ -397,7 +381,7 @@
         <div class="footer">
             <p>
                 数据来源: ESA, NASA, USGS, Esri, OSM |
-                <a href="https://github.com/anthropics/satellite-downloader" target="_blank">GitHub</a>
+                <a href="https://github.com/jsy96/satellite-downloader" target="_blank">GitHub</a>
             </p>
         </div>
     </div>
@@ -408,21 +392,63 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <script>
+        // Data sources configuration (hardcoded)
+        const DATA_SOURCES = {
+            sentinel2: {
+                id: 'sentinel2',
+                name: 'Sentinel-2',
+                resolution: '~10m per pixel',
+                description: 'ESA Sentinel-2 imagery (10m resolution, optical)',
+                zoomLevels: [0, 13],
+                maxCloudCover: 20
+            },
+            landsat: {
+                id: 'landsat',
+                name: 'Landsat',
+                resolution: '~30m per pixel',
+                description: 'NASA Landsat 8/9 imagery (30m resolution, optical)',
+                zoomLevels: [0, 12],
+                maxCloudCover: 100
+            },
+            modis: {
+                id: 'modis',
+                name: 'MODIS',
+                resolution: '~250m per pixel',
+                description: 'NASA MODIS Terra imagery (250m resolution, daily)',
+                zoomLevels: [0, 9],
+                maxCloudCover: 100
+            },
+            esri: {
+                id: 'esri',
+                name: 'Esri World Imagery',
+                resolution: '~1m per pixel (variable)',
+                description: 'Esri World Imagery (1m resolution, multi-source)',
+                zoomLevels: [0, 17],
+                maxCloudCover: 100
+            },
+            osm: {
+                id: 'osm',
+                name: 'OpenStreetMap',
+                resolution: 'Vector rendering',
+                description: 'OpenStreetMap (vector rendering, not real imagery)',
+                zoomLevels: [0, 19],
+                maxCloudCover: 100
+            }
+        };
+
         // Global state
         let map;
         let drawnItems;
         let currentBBox = null;
-        let dataSources = [];
 
         // Initialize map
         function initMap() {
-            map = L.map('map').setView([39.9042, 116.4074], 10); // Beijing
+            map = L.map('map').setView([39.9042, 116.4074], 10);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // Initialize draw control
             drawnItems = new L.FeatureGroup();
             map.addLayer(drawnItems);
 
@@ -448,15 +474,11 @@
             });
             map.addControl(drawControl);
 
-            // Handle draw events
             map.on(L.Draw.Event.CREATED, function (e) {
-                // Clear existing layers
                 drawnItems.clearLayers();
-
                 const layer = e.layer;
                 drawnItems.addLayer(layer);
 
-                // Get bounding box
                 const bounds = layer.getBounds();
                 currentBBox = {
                     min_lon: bounds.getWest(),
@@ -476,7 +498,6 @@
             });
         }
 
-        // Update bounding box display
         function updateBBoxDisplay() {
             const display = document.getElementById('bboxCoords');
             if (currentBBox) {
@@ -491,110 +512,66 @@
             }
         }
 
-        // Update download button state
         function updateDownloadButton() {
             const btn = document.getElementById('downloadBtn');
             btn.disabled = !currentBBox;
         }
 
-        // Load data sources
-        async function loadDataSources() {
-            try {
-                const response = await fetch('/api/sources');
-                dataSources = await response.json();
-
-                const select = document.getElementById('sourceSelect');
-                select.innerHTML = '';
-
-                dataSources.forEach(source => {
-                    const option = document.createElement('option');
-                    option.value = source.id;
-                    option.textContent = `${source.name} (${source.resolution})`;
-                    select.appendChild(option);
-                });
-
-                // Update source info on selection
-                select.addEventListener('change', updateSourceInfo);
-                updateSourceInfo();
-
-            } catch (error) {
-                console.error('Failed to load data sources:', error);
-                document.getElementById('sourceSelect').innerHTML = '<option>加载失败 | Load failed</option>';
-            }
-        }
-
-        // Update source info display
         function updateSourceInfo() {
             const select = document.getElementById('sourceSelect');
             const info = document.getElementById('sourceInfo');
-            const source = dataSources.find(s => s.id === select.value);
+            const source = DATA_SOURCES[select.value];
 
             if (source) {
                 info.innerHTML = `
                     <strong>描述:</strong> ${source.description}<br>
-                    <strong>缩放级别:</strong> ${source.zoom_levels[0]} - ${source.zoom_levels[source.zoom_levels.length - 1]}<br>
-                    ${source.max_cloud_cover < 100 ? `<strong>最大云覆盖:</strong> ${source.max_cloud_cover}%` : ''}
+                    <strong>缩放级别:</strong> ${source.zoomLevels[0]} - ${source.zoomLevels[1]}<br>
+                    <strong>最大云覆盖:</strong> ${source.maxCloudCover}%
                 `;
             }
         }
 
-        // Generate download command
-        async function generateCommand() {
+        function generateCommand() {
             if (!currentBBox) return;
 
-            const btn = document.getElementById('downloadBtn');
-            const resultPanel = document.getElementById('resultPanel');
+            const source = document.getElementById('sourceSelect').value;
+            const zoom = document.getElementById('zoomInput').value;
+            const cloudCover = document.getElementById('cloudCoverInput').value;
+            const compression = document.getElementById('compressionSelect').value;
 
-            btn.disabled = true;
-            btn.textContent = '⏳ 生成中... | Generating...';
-            resultPanel.classList.remove('show');
+            const bbox = `${currentBBox.min_lon},${currentBBox.min_lat},${currentBBox.max_lon},${currentBBox.max_lat}`;
 
-            try {
-                const params = {
-                    bbox: `${currentBBox.min_lon},${currentBBox.min_lat},${currentBBox.max_lon},${currentBBox.max_lat}`,
-                    source: document.getElementById('sourceSelect').value,
-                    zoom: document.getElementById('zoomInput').value || null,
-                    cloud_cover: parseInt(document.getElementById('cloudCoverInput').value),
-                    compression: document.getElementById('compressionSelect').value
-                };
+            // Calculate area
+            const lonDiff = currentBBox.max_lon - currentBBox.min_lon;
+            const latDiff = currentBBox.max_lat - currentBBox.min_lat;
+            const areaKm2 = (lonDiff * 111) * (latDiff * 111);
 
-                const response = await fetch('/api/download', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
+            // Build command
+            let cmd = `satellite-download --bbox ${bbox} --source ${source}`;
 
-                const result = await response.json();
+            if (zoom) cmd += ` --zoom ${zoom}`;
+            if (cloudCover != 20) cmd += ` --cloud-cover ${cloudCover}`;
+            if (compression != 'lzw') cmd += ` --compression ${compression}`;
+            cmd += ` --output area_${source}.tif`;
 
-                // Display result
-                document.getElementById('commandOutput').textContent = result.command;
-                document.getElementById('taskId').textContent = result.task_id;
-                document.getElementById('areaSize').textContent = `${result.area_km2} km²`;
-                document.getElementById('status').textContent = result.message;
-
-                resultPanel.classList.add('show');
-
-            } catch (error) {
-                alert('生成命令失败 | Failed to generate command: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🚀 生成下载命令 | Generate Download Command';
-            }
+            // Display result
+            document.getElementById('commandOutput').textContent = cmd;
+            document.getElementById('resultSource').textContent = DATA_SOURCES[source].name;
+            document.getElementById('areaSize').textContent = `${areaKm2.toFixed(2)} km²`;
+            document.getElementById('resultPanel').classList.add('show');
         }
 
-        // Copy command to clipboard
         function copyCommand() {
             const command = document.getElementById('commandOutput').textContent;
             navigator.clipboard.writeText(command).then(() => {
                 const btn = document.getElementById('copyBtn');
-                btn.textContent = '已复制! | Copied!';
+                btn.textContent = '已复制!';
                 setTimeout(() => {
                     btn.textContent = '复制 | Copy';
                 }, 2000);
             });
         }
 
-        // Clear selection
         function clearSelection() {
             drawnItems.clearLayers();
             currentBBox = null;
@@ -606,8 +583,9 @@
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
-            loadDataSources();
+            updateSourceInfo();
 
+            document.getElementById('sourceSelect').addEventListener('change', updateSourceInfo);
             document.getElementById('downloadBtn').addEventListener('click', generateCommand);
             document.getElementById('copyBtn').addEventListener('click', copyCommand);
             document.getElementById('clearBtn').addEventListener('click', clearSelection);
