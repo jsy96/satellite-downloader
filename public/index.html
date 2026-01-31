@@ -577,28 +577,23 @@
             }
         }
 
-        // Convert lat/lon to tile coordinates using Web Mercator projection
+        // Convert lat/lon to tile coordinates using Leaflet's method
         function getTileRange(bounds, zoom) {
             const tileSize = 256;
 
-            // Web Mercator projection bounds
-            const earthRadius = 6378137;
-            const earthCircumference = 2 * Math.PI * earthRadius;
+            // Use Leaflet's built-in method for accurate conversion
+            // project() converts lat/lng to pixel coordinates at given zoom
+            const nw = bounds.getNorthWest();
+            const se = bounds.getSouthEast();
 
-            // Convert lat/lon to tile coordinates
-            function lonToTile(lon, z) {
-                return Math.floor((lon + 180) / 360 * Math.pow(2, z));
-            }
+            const nwPoint = L.CRS.EPSG3857.latLngToPoint(nw, zoom);
+            const sePoint = L.CRS.EPSG3857.latLngToPoint(se, zoom);
 
-            function latToTile(lat, z) {
-                const latRad = lat * Math.PI / 180;
-                return Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z));
-            }
-
-            const xMin = lonToTile(bounds.getWest(), zoom);
-            const xMax = lonToTile(bounds.getEast(), zoom);
-            const yMin = latToTile(bounds.getSouth(), zoom);
-            const yMax = latToTile(bounds.getNorth(), zoom);
+            // Calculate tile indices (floor division)
+            const xMin = Math.floor(nwPoint.x / tileSize);
+            const yMin = Math.floor(nwPoint.y / tileSize);
+            const xMax = Math.floor(sePoint.x / tileSize);
+            const yMax = Math.floor(sePoint.y / tileSize);
 
             return {
                 xMin: Math.max(0, xMin),
@@ -608,16 +603,15 @@
             };
         }
 
-        // Get tile URL using Leaflet's tile layer format
+        // Get tile URL - test both formats
         function getTileUrl(source, x, y, zoom) {
-            // Different services use different URL formats
-            const templates = {
-                // Esri: {level}/{row}/{col} = {z}/{y}/{x}
-                esri: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`,
-                // OSM: {z}/{x}/{y}
-                osm: `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
-            };
-            return templates[source] || templates.esri;
+            // Try both possible URL formats for Esri
+            if (source === 'esri') {
+                // Format 1: {z}/{y}/{x}
+                return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`;
+            }
+            // OSM: {z}/{x}/{y}
+            return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
         }
 
         // Browser-based download
@@ -646,8 +640,14 @@
             const tileCount = (xMax - xMin + 1) * (yMax - yMin + 1);
 
             // Debug: log tile range
-            console.log('Download params:', { source, zoom, xMin, xMax, yMin, yMax, tileCount });
-            console.log('Bounds:', currentBBox);
+            console.log('=== Download Debug ===');
+            console.log('Source:', source);
+            console.log('Zoom:', zoom);
+            console.log('Input Bounds:', currentBBox);
+            console.log('Tile Range:', { xMin, xMax, yMin, yMax, tileCount });
+            console.log('Canvas Size:', `${width}x${height}px`);
+            console.log('First tile URL:', getTileUrl(source, xMin, yMin, zoom));
+            console.log('===================');
 
             // Limit tile count
             if (tileCount > 400) {
