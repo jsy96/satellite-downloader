@@ -318,10 +318,10 @@
                 <div class="form-group">
                     <label for="sourceSelect">🌍 数据源 | Data Source</label>
                     <select id="sourceSelect">
-                        <option value="sentinel2">Sentinel-2 (~10m)</option>
-                        <option value="landsat">Landsat (~30m)</option>
-                        <option value="modis">MODIS (~250m)</option>
-                        <option value="esri">Esri World Imagery (~1m)</option>
+                        <option value="esri" selected>Esri World Imagery (~1m) [推荐]</option>
+                        <option value="sentinel2">Sentinel-2 (~10m) [暂不可用]</option>
+                        <option value="landsat">Landsat (~30m) [暂不可用]</option>
+                        <option value="modis">MODIS (~250m) [暂不可用]</option>
                         <option value="osm">OpenStreetMap (Vector)</option>
                     </select>
                     <div class="source-info" id="sourceInfo"></div>
@@ -398,33 +398,37 @@
                 id: 'sentinel2',
                 name: 'Sentinel-2',
                 resolution: '~10m per pixel',
-                description: 'ESA Sentinel-2 imagery (10m resolution, optical)',
+                description: 'NASA GIBS service changed - currently not available',
                 zoomLevels: [0, 13],
-                maxCloudCover: 20
+                maxCloudCover: 20,
+                available: false
             },
             landsat: {
                 id: 'landsat',
                 name: 'Landsat',
                 resolution: '~30m per pixel',
-                description: 'NASA Landsat 8/9 imagery (30m resolution, optical)',
+                description: 'NASA GIBS service changed - currently not available',
                 zoomLevels: [0, 12],
-                maxCloudCover: 100
+                maxCloudCover: 100,
+                available: false
             },
             modis: {
                 id: 'modis',
                 name: 'MODIS',
                 resolution: '~250m per pixel',
-                description: 'NASA MODIS Terra imagery (250m resolution, daily)',
+                description: 'NASA GIBS service changed - currently not available',
                 zoomLevels: [0, 9],
-                maxCloudCover: 100
+                maxCloudCover: 100,
+                available: false
             },
             esri: {
                 id: 'esri',
                 name: 'Esri World Imagery',
                 resolution: '~1m per pixel (variable)',
-                description: 'Esri World Imagery (1m resolution, multi-source)',
+                description: 'High-resolution satellite and aerial imagery (recommended)',
                 zoomLevels: [0, 17],
-                maxCloudCover: 100
+                maxCloudCover: 100,
+                available: true
             },
             osm: {
                 id: 'osm',
@@ -432,7 +436,8 @@
                 resolution: 'Vector rendering',
                 description: 'OpenStreetMap (vector rendering, not real imagery)',
                 zoomLevels: [0, 19],
-                maxCloudCover: 100
+                maxCloudCover: 100,
+                available: true
             }
         };
 
@@ -523,10 +528,11 @@
             const source = DATA_SOURCES[select.value];
 
             if (source) {
+                const availableStyle = source.available ? '' : 'style="color: #ff6b6b;"';
                 info.innerHTML = `
-                    <strong>描述:</strong> ${source.description}<br>
+                    <strong ${availableStyle}>描述:</strong> ${source.description}<br>
                     <strong>缩放级别:</strong> ${source.zoomLevels[0]} - ${source.zoomLevels[1]}<br>
-                    <strong>最大云覆盖:</strong> ${source.maxCloudCover}%
+                    ${source.available ? '' : '<strong style="color: #ff6b6b;">⚠️ 此数据源暂不可用</strong><br>'}
                 `;
             }
         }

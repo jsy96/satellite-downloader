@@ -38,8 +38,8 @@ from .utils import (
               help='Compression method (default: lzw)')
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--clear-cache', is_flag=True, help='Clear cache before downloading')
-@click.option('--source', type=str, default='sentinel2',
-              help='Data source: sentinel2/s2, landsat/l8, modis, esri, osm (default: sentinel2)')
+@click.option('--source', type=str, default='esri',
+              help='Data source: sentinel2/s2, landsat/l8, modis, esri (default: esri, recommended)')
 @click.option('--cloud-cover', type=float, default=20.0,
               help='Maximum cloud cover percentage for S2/Landsat/MODIS (default: 20)')
 @click.option('-v', '--verbose', count=True,

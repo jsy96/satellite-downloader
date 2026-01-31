@@ -83,18 +83,16 @@ class DataSource(ABC):
 
 class Sentinel2DataSource(DataSource):
     """
-    Sentinel-2 imagery data source via NASA GIBS.
+    Sentinel-2 imagery data source.
+
+    Note: NASA GIBS WMTS service has changed and may require authentication.
+    This data source is currently not functional. Please use Esri as an alternative.
 
     Sentinel-2 is a European Space Agency mission providing global coverage
     with 13 spectral bands and 10-60m resolution.
-
-    This data source uses NASA GIBS (Global Imagery Browse Services)
-    which provides free access to Sentinel-2 imagery via WMTS.
-
-    Layer: COPERNICUS_S2_RADIOMETRY (Sentinel-2 Radiometry)
     """
 
-    # NASA GIBS WMTS endpoint
+    # NASA GIBS WMTS endpoint (currently not functional)
     GIBS_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/COPERNICUS_S2_RADIOMETRY/default/{time}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png"
 
     def __init__(self, max_cloud_cover: float = 20.0):
