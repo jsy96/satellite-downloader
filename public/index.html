@@ -639,16 +639,6 @@
 
             const tileCount = (xMax - xMin + 1) * (yMax - yMin + 1);
 
-            // Debug: log tile range
-            console.log('=== Download Debug ===');
-            console.log('Source:', source);
-            console.log('Zoom:', zoom);
-            console.log('Input Bounds:', currentBBox);
-            console.log('Tile Range:', { xMin, xMax, yMin, yMax, tileCount });
-            console.log('Canvas Size:', `${width}x${height}px`);
-            console.log('First tile URL:', getTileUrl(source, xMin, yMin, zoom));
-            console.log('===================');
-
             // Limit tile count
             if (tileCount > 400) {
                 if (!confirm(`需要下载 ${tileCount} 个瓦片，这可能需要较长时间。是否继续？`)) {
