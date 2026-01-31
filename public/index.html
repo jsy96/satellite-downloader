@@ -721,7 +721,45 @@
             }
 
             console.log('Download complete. Success:', successCount, '/', tileCount);
-            downloadedCanvas = canvas;
+
+            // Crop canvas to precise bounds
+            // Calculate pixel offsets for the exact selected area
+            const nw = L.latLng(currentBBox.max_lat, currentBBox.min_lon);
+            const se = L.latLng(currentBBox.min_lat, currentBBox.max_lon);
+
+            const nwPoint = L.CRS.EPSG3857.latLngToPoint(nw, zoom);
+            const sePoint = L.CRS.EPSG3857.latLngToPoint(se, zoom);
+
+            // Calculate the top-left corner of the tile grid (xMin, yMin)
+            const tileNWPoint = L.point(xMin * tileSize, yMin * tileSize);
+
+            // Calculate pixel offsets within the canvas
+            const offsetX = nwPoint.x - tileNWPoint.x;
+            const offsetY = nwPoint.y - tileNWPoint.y;
+
+            // Calculate the precise crop dimensions
+            const cropWidth = sePoint.x - nwPoint.x;
+            const cropHeight = sePoint.y - nwPoint.y;
+
+            console.log('=== Crop Info ===');
+            console.log('Offset:', { x: offsetX, y: offsetY });
+            console.log('Crop Size:', { width: cropWidth, height: cropHeight });
+            console.log('==================');
+
+            // Create cropped canvas
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = Math.round(cropWidth);
+            croppedCanvas.height = Math.round(cropHeight);
+            const croppedCtx = croppedCanvas.getContext('2d');
+
+            // Extract the precise area from the full canvas
+            croppedCtx.drawImage(
+                canvas,
+                Math.round(offsetX), Math.round(offsetY), Math.round(cropWidth), Math.round(cropHeight),  // Source
+                0, 0, Math.round(cropWidth), Math.round(cropHeight)  // Destination
+            );
+
+            downloadedCanvas = croppedCanvas;
 
             // Check if any tiles were loaded
             if (successCount === 0) {
@@ -754,9 +792,11 @@
                 document.getElementById('imagePreviewBox').style.display = 'block';
 
                 // Update info
+                const croppedWidth = croppedCanvas.width;
+                const croppedHeight = croppedCanvas.height;
                 document.getElementById('resultSource').textContent = dataSource.name;
                 document.getElementById('resultArea').textContent = `${currentBBox.min_lon.toFixed(4)}, ${currentBBox.min_lat.toFixed(4)} - ${currentBBox.max_lon.toFixed(4)}, ${currentBBox.max_lat.toFixed(4)}`;
-                document.getElementById('resultTiles').textContent = `${tileCount} (${width}x${height}px)`;
+                document.getElementById('resultTiles').textContent = `${tileCount} tiles → ${croppedWidth}x${croppedHeight}px (cropped)`;
                 document.getElementById('resultResolution').textContent = `Zoom ${zoom}`;
             } catch (e) {
                 console.error('Failed to convert canvas to blob:', e);
@@ -785,13 +825,18 @@
             if (!currentBBox) return;
 
             const source = document.getElementById('sourceSelect').value;
-            const zoom = document.getElementById('zoomInput').value;
+            let zoom = document.getElementById('zoomInput').value;
             const compression = document.getElementById('compressionSelect').value;
+
+            // Use default zoom if not specified (same as browser download)
+            if (!zoom) {
+                zoom = (source === 'esri' || source === 'sentinel2') ? '15' : '15';
+            }
 
             const bbox = `${currentBBox.min_lon},${currentBBox.min_lat},${currentBBox.max_lon},${currentBBox.max_lat}`;
 
-            let cmd = `satellite-download --bbox ${bbox} --source ${source}`;
-            if (zoom) cmd += ` --zoom ${zoom}`;
+            // Always include --zoom (CLI requires either --zoom or --resolution)
+            let cmd = `satellite-download --bbox ${bbox} --source ${source} --zoom ${zoom}`;
             if (compression != 'lzw') cmd += ` --compression ${compression}`;
             cmd += ` --output area_${source}.tif`;
 
