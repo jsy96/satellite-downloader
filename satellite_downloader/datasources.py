@@ -107,9 +107,9 @@ class Sentinel2DataSource(DataSource):
         """
         super().__init__()
         self.max_cloud_cover = max_cloud_cover
-        # Use current date for "latest" imagery
-        from datetime import datetime
-        self.time = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use a recent reliable date (GIBS has data latency)
+        # This date is known to have good coverage
+        self.time = "2025-01-15"
 
     def get_name(self) -> str:
         return "sentinel2"
@@ -176,8 +176,8 @@ class LandsatDataSource(DataSource):
         """
         super().__init__()
         self.max_cloud_cover = max_cloud_cover
-        # Use current date for "latest" imagery
-        self.time = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use a recent reliable date (GIBS has data latency)
+        self.time = "2025-01-15"
 
     def get_name(self) -> str:
         return "landsat"
@@ -244,8 +244,8 @@ class MODISDataSource(DataSource):
         """
         super().__init__()
         self.max_cloud_cover = max_cloud_cover
-        # Use current date for "latest" imagery
-        self.time = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use a recent reliable date (MODIS updates daily)
+        self.time = "2025-01-15"
 
     def get_name(self) -> str:
         return "modis"
