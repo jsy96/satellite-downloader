@@ -673,6 +673,16 @@
             const width = (xMax - xMin + 1) * tileSize;
             const height = (yMax - yMin + 1) * tileSize;
 
+            // Debug: log tile range (moved here after width is defined)
+            console.log('=== Download Debug ===');
+            console.log('Source:', source);
+            console.log('Zoom:', zoom);
+            console.log('Input Bounds:', currentBBox);
+            console.log('Tile Range:', { xMin, xMax, yMin, yMax, tileCount });
+            console.log('Canvas Size:', `${width}x${height}px`);
+            console.log('First tile URL:', getTileUrl(source, xMin, yMin, zoom));
+            console.log('===================');
+
             // Create canvas
             const canvas = document.createElement('canvas');
             canvas.width = width;
